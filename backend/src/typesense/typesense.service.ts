@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Client as TypesenseClient } from 'typesense';
 import OpenAI from 'openai';
 import { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
+import { SearchParams } from 'typesense/lib/Typesense/Documents';
 
 export const DOCS_COLLECTION = 'docs';
 
@@ -124,6 +125,35 @@ export class TypesenseService implements OnModuleInit {
       } catch (error) {
         console.error('Error processing chunk:', error);
       }
+    }
+  }
+
+  async search(queryVector: number[]) {
+    const searchRequests = {
+      searches: [
+        {
+          collection: DOCS_COLLECTION,
+          q: '*',
+          vector_query: `embedding:([${queryVector.join(',')}], k: 5)`,
+        },
+      ],
+    };
+
+    const commonSearchParams = {
+      query_by: 'embedding',
+      include_fields: 'text,source',
+      per_page: 5,
+    };
+
+    try {
+      const searchResult = await this.client.multiSearch.perform(
+        searchRequests,
+        commonSearchParams,
+      );
+      return (searchResult.results[0] as any)?.hits || [];
+    } catch (error) {
+      console.error('Error searching in Typesense:', error);
+      throw error;
     }
   }
 }

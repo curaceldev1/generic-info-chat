@@ -5,9 +5,10 @@ import { AppService } from './app.service';
 import { IngestionModule } from './ingestion/ingestion.module';
 import { TypesenseService } from './typesense/typesense.service';
 import { TypesenseModule } from './typesense/typesense.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), IngestionModule, TypesenseModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), IngestionModule, TypesenseModule, ChatModule],
   controllers: [AppController],
   providers: [AppService, TypesenseService],
 })
