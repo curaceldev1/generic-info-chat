@@ -52,7 +52,11 @@ const ChatWidget = () => {
       <div className="chat-messages">
         {messages.map((msg, index) => (
           <div key={index} className={`message ${msg.sender}`}>
-            <p>{msg.text}</p>
+            {msg.sender === 'bot' ? (
+              <div dangerouslySetInnerHTML={{ __html: msg.text }} />
+            ) : (
+              <p>{msg.text}</p>
+            )}
             {msg.sources && msg.sources.length > 0 && (
               <div className="sources">
                 <strong>Sources:</strong>

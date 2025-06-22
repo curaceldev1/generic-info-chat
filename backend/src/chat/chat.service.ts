@@ -2,10 +2,12 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { TypesenseService } from 'src/typesense/typesense.service';
+import * as showdown from 'showdown';
 
 @Injectable()
 export class ChatService implements OnModuleInit {
   private openai: OpenAI;
+  private converter: showdown.Converter;
 
   constructor(
     private configService: ConfigService,
@@ -18,6 +20,7 @@ export class ChatService implements OnModuleInit {
       throw new Error('Missing OPENAI_API_KEY environment variable.');
     }
     this.openai = new OpenAI({ apiKey: openaiApiKey });
+    this.converter = new showdown.Converter();
   }
 
   async ask(question: string): Promise<any> {
@@ -56,9 +59,15 @@ export class ChatService implements OnModuleInit {
         messages: [{ role: 'user', content: prompt }],
       });
 
+      const markdownResponse = response.choices[0].message.content;
+      if (!markdownResponse) {
+        throw new Error('Received an empty response from the language model.');
+      }
+      const htmlResponse = this.converter.makeHtml(markdownResponse);
+
       return {
-        answer: response.choices[0].message.content,
-        sources: searchResults.map((result) => result.document.source),
+        answer: htmlResponse,
+        sources: searchResults.map((result: any) => result.document.source),
       };
     } catch (error) {
       console.error('Error in ChatService ask method:', error);
