@@ -38,6 +38,7 @@ export class ChatService implements OnModuleInit {
 
       // Filter by baseUrl if provided
       if (baseUrl) {
+        console.log('Filtering by baseUrl:', 'baseUrl:', baseUrl, 'searchResults:', searchResults);
         searchResults = searchResults.filter((result: any) =>
           result.document.source && result.document.source.startsWith(baseUrl)
         );

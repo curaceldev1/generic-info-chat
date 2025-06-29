@@ -60,7 +60,11 @@ export class TypesenseService implements OnModuleInit {
       console.log(`Collection '${DOCS_COLLECTION}' already exists.`);
     } catch (error) {
       console.log('Error checking for collection:', error, error.httpStatus);
-      if (error.httpStatus === 404) {
+      if (
+        error.httpStatus === 404 ||
+        error.message?.includes('404') ||
+        error.name === 'ObjectNotFound'
+      ) {
         console.log(`Collection '${DOCS_COLLECTION}' not found, creating...`);
         await this.createCollection();
       } else {

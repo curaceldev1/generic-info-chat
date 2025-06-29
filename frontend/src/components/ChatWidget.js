@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import './ChatWidget.css';
 
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+
 const ChatWidget = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -9,6 +11,10 @@ const ChatWidget = () => {
   const [showModal, setShowModal] = useState(false);
   const [ingestUrl, setIngestUrl] = useState('');
   const [ingestStatus, setIngestStatus] = useState(null);
+  const [retryStatus, setRetryStatus] = useState(null);
+
+  // Loader is active if either ingestion is loading (modal or retry)
+  const isIngesting = ingestStatus === 'loading' || retryStatus === 'loading';
 
   const handleSend = async () => {
     if (input.trim() === '') return;
@@ -19,9 +25,9 @@ const ChatWidget = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:3000/chat', {
+      const response = await axios.post(`${BACKEND_URL}/chat`, {
         message: input,
-        // baseUrl: window.location.origin, // idea is to use the base url of the current page, so answers are tailored to the current base url
+        // baseUrl: window.location.origin,
         baseUrl: 'https://www.curacel.co/',
       });
 
@@ -53,7 +59,7 @@ const ChatWidget = () => {
     if (!ingestUrl.trim()) return;
     setIngestStatus('loading');
     try {
-      await axios.post('http://localhost:3000/ingestion', { url: ingestUrl });
+      await axios.post(`${BACKEND_URL}/ingestion`, { url: ingestUrl });
       setIngestStatus('success');
       setIngestUrl('');
     } catch (error) {
@@ -61,17 +67,69 @@ const ChatWidget = () => {
     }
   };
 
+  const handleRetryIngest = async () => {
+    setRetryStatus('loading');
+    try {
+      await axios.post(`${BACKEND_URL}/ingestion`, { url: 'https://www.curacel.co/' });
+      setRetryStatus('success');
+    } catch (error) {
+      setRetryStatus('error');
+    }
+    setTimeout(() => setRetryStatus(null), 2000);
+  };
+
   return (
     <div className="chat-widget">
+      {/* Loader overlay */}
+      {isIngesting && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(255,255,255,0.7)',
+          zIndex: 2000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spinner" style={{
+              border: '4px solid #f3f3f3',
+              borderTop: '4px solid #007bff',
+              borderRadius: '50%',
+              width: 40,
+              height: 40,
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 10px auto'
+            }} />
+            <div style={{ color: '#007bff', fontWeight: 'bold' }}>Ingesting...</div>
+          </div>
+        </div>
+      )}
       <div className="chat-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h2 style={{ margin: 0 }}>AI Assistant</h2>
-        <button
-          style={{ fontSize: '1.5rem', background: 'none', border: 'none', color: 'white', cursor: 'pointer', marginLeft: '10px' }}
-          onClick={() => { setShowModal(true); setIngestStatus(null); }}
-          title="Ingest a new URL"
-        >
-          +
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            style={{ fontSize: '1.5rem', background: 'none', border: 'none', color: 'white', cursor: 'pointer', marginLeft: '10px' }}
+            onClick={() => { setShowModal(true); setIngestStatus(null); }}
+            title="Ingest a new URL"
+          >
+            +
+          </button>
+          <button
+            style={{ fontSize: '1.3rem', background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}
+            onClick={handleRetryIngest}
+            title="Reingest current site"
+            disabled={retryStatus === 'loading'}
+          >
+            ⟳
+          </button>
+          {retryStatus === 'loading' && <span style={{ color: 'white', marginLeft: 4, fontSize: '1rem' }}>...</span>}
+          {retryStatus === 'success' && <span style={{ color: 'lightgreen', marginLeft: 4, fontSize: '1rem' }}>✓</span>}
+          {retryStatus === 'error' && <span style={{ color: 'red', marginLeft: 4, fontSize: '1rem' }}>!</span>}
+        </div>
       </div>
       <div className="chat-messages">
         {messages.map((msg, index) => (
