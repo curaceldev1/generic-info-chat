@@ -32,17 +32,10 @@ export class ChatService implements OnModuleInit {
       });
 
       // 2. Search for relevant documents in Typesense
-      let searchResults = await this.typesenseService.search(
+      const searchResults = await this.typesenseService.search(
         queryEmbedding.data[0].embedding,
+        baseUrl,
       );
-
-      // Filter by baseUrl if provided
-      if (baseUrl) {
-        console.log('Filtering by baseUrl:', 'baseUrl:', baseUrl, 'searchResults:', searchResults);
-        searchResults = searchResults.filter((result: any) =>
-          result.document.source && result.document.source.startsWith(baseUrl)
-        );
-      }
 
       // 3. Construct the context for the prompt
       const context = searchResults

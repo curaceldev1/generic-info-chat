@@ -80,7 +80,7 @@ export class TypesenseService implements OnModuleInit {
         { name: 'id', type: 'string' },
         { name: 'text', type: 'string' },
         { name: 'embedding', type: 'float[]', num_dim: 1536 },
-        { name: 'source', type: 'string' },
+        { name: 'source', type: 'string', facet: true },
       ],
     };
 
@@ -122,6 +122,7 @@ export class TypesenseService implements OnModuleInit {
   ): Promise<void> {
     for (const chunk of chunks) {
       try {
+        console.log('Generating embedding for chunk:', chunk);
         const response = await this.openai.embeddings.create({
           model: 'text-embedding-3-small',
           input: chunk,
@@ -135,7 +136,7 @@ export class TypesenseService implements OnModuleInit {
     }
   }
 
-  async search(queryVector: number[]) {
+  async search(queryVector: number[], baseUrl?: string) {
     const searchRequests = {
       searches: [
         {
@@ -146,11 +147,15 @@ export class TypesenseService implements OnModuleInit {
       ],
     };
 
-    const commonSearchParams = {
+    const commonSearchParams: SearchParams = {
       query_by: 'embedding',
       include_fields: 'text,source',
       per_page: 5,
     };
+
+    if (baseUrl) {
+      commonSearchParams.filter_by = `source:=${baseUrl}`;
+    }
 
     try {
       const searchResult = await this.client.multiSearch.perform(

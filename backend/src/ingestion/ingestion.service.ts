@@ -23,6 +23,7 @@ export class IngestionService implements OnModuleInit {
 
   async crawlUrl(url: string) {
     try {
+      console.log('Crawling URL:', url);
       // Use Firecrawl's recursive crawl
       const result = await this.firecrawl.crawlUrl(url, {
         limit: 100, // max number of pages
