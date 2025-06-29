@@ -55,9 +55,11 @@ export class TypesenseService implements OnModuleInit {
 
   private async ensureCollectionExists() {
     try {
+      console.log('Checking if collection exists:', DOCS_COLLECTION);
       await this.client.collections(DOCS_COLLECTION).retrieve();
       console.log(`Collection '${DOCS_COLLECTION}' already exists.`);
     } catch (error) {
+      console.log('Error checking for collection:', error, error.httpStatus);
       if (error.httpStatus === 404) {
         console.log(`Collection '${DOCS_COLLECTION}' not found, creating...`);
         await this.createCollection();
@@ -78,6 +80,7 @@ export class TypesenseService implements OnModuleInit {
       ],
     };
 
+    console.log('Creating collection:', schema);
     try {
       await this.client.collections().create(schema);
       console.log(`Collection '${DOCS_COLLECTION}' created.`);
