@@ -55,10 +55,16 @@ export class TypesenseService implements OnModuleInit {
 
   private async ensureCollectionExists() {
     try {
+      console.log('Checking if collection exists:', DOCS_COLLECTION);
       await this.client.collections(DOCS_COLLECTION).retrieve();
       console.log(`Collection '${DOCS_COLLECTION}' already exists.`);
     } catch (error) {
-      if (error.httpStatus === 404) {
+      console.log('Error checking for collection:', error, error.httpStatus);
+      if (
+        error.httpStatus === 404 ||
+        error.message?.includes('404') ||
+        error.name === 'ObjectNotFound'
+      ) {
         console.log(`Collection '${DOCS_COLLECTION}' not found, creating...`);
         await this.createCollection();
       } else {
@@ -74,10 +80,11 @@ export class TypesenseService implements OnModuleInit {
         { name: 'id', type: 'string' },
         { name: 'text', type: 'string' },
         { name: 'embedding', type: 'float[]', num_dim: 1536 },
-        { name: 'source', type: 'string' },
+        { name: 'source', type: 'string', facet: true },
       ],
     };
 
+    console.log('Creating collection:', schema);
     try {
       await this.client.collections().create(schema);
       console.log(`Collection '${DOCS_COLLECTION}' created.`);
@@ -115,6 +122,7 @@ export class TypesenseService implements OnModuleInit {
   ): Promise<void> {
     for (const chunk of chunks) {
       try {
+        console.log('Generating embedding for chunk:', chunk);
         const response = await this.openai.embeddings.create({
           model: 'text-embedding-3-small',
           input: chunk,
@@ -128,7 +136,7 @@ export class TypesenseService implements OnModuleInit {
     }
   }
 
-  async search(queryVector: number[]) {
+  async search(queryVector: number[], baseUrl?: string) {
     const searchRequests = {
       searches: [
         {
@@ -139,11 +147,15 @@ export class TypesenseService implements OnModuleInit {
       ],
     };
 
-    const commonSearchParams = {
+    const commonSearchParams: SearchParams = {
       query_by: 'embedding',
       include_fields: 'text,source',
       per_page: 5,
     };
+
+    if (baseUrl) {
+      commonSearchParams.filter_by = `source:=${baseUrl}`;
+    }
 
     try {
       const searchResult = await this.client.multiSearch.perform(

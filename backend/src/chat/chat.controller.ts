@@ -8,6 +8,6 @@ export class ChatController {
 
   @Post()
   async chat(@Body() chatDto: ChatDto) {
-    return this.chatService.ask(chatDto.message);
+    return this.chatService.ask(chatDto.message, chatDto.baseUrl);
   }
 }

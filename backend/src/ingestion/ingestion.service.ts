@@ -23,25 +23,36 @@ export class IngestionService implements OnModuleInit {
 
   async crawlUrl(url: string) {
     try {
-      const result = await this.firecrawl.scrapeUrl(url);
+      console.log('Crawling URL:', url);
+      // Use Firecrawl's recursive crawl
+      const result = await this.firecrawl.crawlUrl(url, {
+        limit: 100, // max number of pages
+        maxDepth: 3, // crawl depth
+        scrapeOptions: {
+          formats: ['markdown'],
+        },
+      });
 
-      if (result && 'markdown' in result && result.markdown) {
-        const splitter = new MarkdownTextSplitter({
-          chunkSize: 1000,
-          chunkOverlap: 200,
-        });
-
-        const chunks = await splitter.splitText(result.markdown);
-
-        await this.typesenseService.generateAndStoreEmbedding(url, chunks);
-
+      if (result && typeof result === 'object' && 'data' in result && Array.isArray((result as any).data)) {
+        let totalChunks = 0;
+        for (const page of (result as any).data) {
+          if (page.markdown && page.metadata && page.metadata.sourceURL) {
+            const splitter = new MarkdownTextSplitter({
+              chunkSize: 1000,
+              chunkOverlap: 200,
+            });
+            const chunks = await splitter.splitText(page.markdown);
+            await this.typesenseService.generateAndStoreEmbedding(page.metadata.sourceURL, chunks);
+            totalChunks += chunks.length;
+          }
+        }
         return {
-          message: `Successfully crawled and indexed ${chunks.length} chunks from ${url}.`,
+          message: `Successfully crawled and indexed ${totalChunks} chunks from ${(result as any).data.length} pages under ${url}.`,
         };
       }
 
-      if (result && 'error' in result) {
-        throw new Error(String(result.error));
+      if (result && typeof result === 'object' && 'error' in result) {
+        throw new Error(String((result as any).error));
       }
 
       throw new Error(
