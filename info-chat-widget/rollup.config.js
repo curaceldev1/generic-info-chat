@@ -5,6 +5,7 @@ import terser from '@rollup/plugin-terser';
 import postcss from 'rollup-plugin-postcss';
 import replace from '@rollup/plugin-replace';
 import json from '@rollup/plugin-json';
+import polyfillNode from 'rollup-plugin-polyfill-node';
 
 export default {
   input: 'src/index.js',
@@ -22,16 +23,20 @@ export default {
       extract: false,
       modules: false,
     }),
+    json(),
+    polyfillNode(),
+    nodeResolve({
+        extensions: [".js", ".jsx"],
+        browser: true
+    }),
+    commonjs({
+        include: /node_modules/,
+    }),
     babel({
       babelHelpers: 'bundled',
       exclude: 'node_modules/**',
       extensions: ['.js', '.jsx']
     }),
-    nodeResolve({
-        extensions: [".js", ".jsx"]
-    }),
-    json(),
-    commonjs(),
     terser(),
   ],
 }; 
