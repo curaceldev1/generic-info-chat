@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import './ChatWidget.css';
 
-const ChatWidget = ({ backendUrl = 'http://localhost:3000', baseUrl = 'https://www.curacel.co/' }) => {
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+
+const ChatWidget = ({ baseUrl, appName }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +25,7 @@ const ChatWidget = ({ backendUrl = 'http://localhost:3000', baseUrl = 'https://w
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${backendUrl}/chat`, {
+      const response = await axios.post(`${BACKEND_URL}/chat`, {
         message: input,
         baseUrl: baseUrl,
       });
@@ -56,7 +58,7 @@ const ChatWidget = ({ backendUrl = 'http://localhost:3000', baseUrl = 'https://w
     if (!ingestUrl.trim()) return;
     setIngestStatus('loading');
     try {
-      await axios.post(`${backendUrl}/ingestion`, { url: ingestUrl });
+      await axios.post(`${BACKEND_URL}/ingestion`, { url: ingestUrl });
       setIngestStatus('success');
       setIngestUrl('');
     } catch (error) {
@@ -67,7 +69,7 @@ const ChatWidget = ({ backendUrl = 'http://localhost:3000', baseUrl = 'https://w
   const handleRetryIngest = async () => {
     setRetryStatus('loading');
     try {
-      await axios.post(`${backendUrl}/ingestion`, { url: baseUrl });
+      await axios.post(`${BACKEND_URL}/ingestion`, { url: baseUrl });
       setRetryStatus('success');
     } catch (error) {
       setRetryStatus('error');

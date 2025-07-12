@@ -17,6 +17,7 @@ export default {
   plugins: [
     replace({
       'process.env.NODE_ENV': JSON.stringify('production'),
+      'process.env.REACT_APP_BACKEND_URL': JSON.stringify(process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000'),
       preventAssignment: true
     }),
     postcss({

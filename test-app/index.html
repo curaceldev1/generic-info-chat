@@ -34,9 +34,8 @@
       if (window.InfoChatWidget && typeof window.InfoChatWidget.init === 'function') {
         InfoChatWidget.init({
           containerId: 'chat-container',
-          // The backend server needs to be running and accessible
-          backendUrl: 'http://localhost:3000',
-          baseUrl: 'https://www.curacel.co/'
+          baseUrl: 'https://www.curacel.co/',
+          appName: 'TestApp'
         });
       } else {
         throw new Error('InfoChatWidget is not available. Check the script path and build process.');
