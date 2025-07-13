@@ -28,6 +28,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
       const response = await axios.post(`${BACKEND_URL}/chat`, {
         message: input,
         baseUrl: baseUrl,
+        appName: appName,
       });
 
       const botMessage = {
@@ -58,7 +59,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
     if (!ingestUrl.trim()) return;
     setIngestStatus('loading');
     try {
-      await axios.post(`${BACKEND_URL}/ingestion`, { url: ingestUrl });
+      await axios.post(`${BACKEND_URL}/ingestion`, { url: ingestUrl, appName: appName });
       setIngestStatus('success');
       setIngestUrl('');
     } catch (error) {
@@ -69,7 +70,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
   const handleRetryIngest = async () => {
     setRetryStatus('loading');
     try {
-      await axios.post(`${BACKEND_URL}/ingestion`, { url: baseUrl });
+      await axios.post(`${BACKEND_URL}/ingestion`, { url: baseUrl, appName: appName });
       setRetryStatus('success');
     } catch (error) {
       setRetryStatus('error');

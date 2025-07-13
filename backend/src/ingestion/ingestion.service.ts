@@ -21,9 +21,9 @@ export class IngestionService implements OnModuleInit {
     this.firecrawl = new FirecrawlApp({ apiKey });
   }
 
-  async crawlUrl(url: string) {
+  async crawlUrl(url: string, appName: string) {
     try {
-      console.log('Crawling URL:', url);
+      console.log(`Crawling URL: ${url} for app: ${appName}`);
       // Use Firecrawl's recursive crawl
       const result = await this.firecrawl.crawlUrl(url, {
         limit: 100, // max number of pages
@@ -42,7 +42,7 @@ export class IngestionService implements OnModuleInit {
               chunkOverlap: 200,
             });
             const chunks = await splitter.splitText(page.markdown);
-            await this.typesenseService.generateAndStoreEmbedding(page.metadata.sourceURL, chunks);
+            await this.typesenseService.generateAndStoreEmbedding(appName, page.metadata.sourceURL, chunks);
             totalChunks += chunks.length;
           }
         }

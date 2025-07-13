@@ -8,6 +8,7 @@ export class ChatController {
 
   @Post()
   async chat(@Body() chatDto: ChatDto) {
-    return this.chatService.ask(chatDto.message, chatDto.baseUrl);
+    const { message, appName, baseUrl } = chatDto;
+    return this.chatService.ask(message, appName, baseUrl);
   }
 }

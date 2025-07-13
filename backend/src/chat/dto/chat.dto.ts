@@ -1,10 +1,15 @@
-import { IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class ChatDto {
   @IsString()
-  @MinLength(1)
+  @IsNotEmpty()
   message: string;
 
   @IsString()
+  @IsNotEmpty()
   baseUrl: string;
+
+  @IsString()
+  @IsNotEmpty()
+  appName: string;
 } 

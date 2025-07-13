@@ -23,7 +23,7 @@ export class ChatService implements OnModuleInit {
     this.converter = new showdown.Converter();
   }
 
-  async ask(question: string, baseUrl?: string): Promise<any> {
+  async ask(question: string, appName: string, baseUrl?: string): Promise<any> {
     try {
       // 1. Generate an embedding for the user's question
       const queryEmbedding = await this.openai.embeddings.create({
@@ -33,6 +33,7 @@ export class ChatService implements OnModuleInit {
 
       // 2. Search for relevant documents in Typesense
       const searchResults = await this.typesenseService.search(
+        appName,
         queryEmbedding.data[0].embedding,
         baseUrl,
       );
