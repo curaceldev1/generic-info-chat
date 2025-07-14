@@ -5,7 +5,6 @@ import OpenAI from 'openai';
 import { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
 import { SearchParams } from 'typesense/lib/Typesense/Documents';
 
-export const DOCS_COLLECTION = 'docs';
 
 @Injectable()
 export class TypesenseService implements OnModuleInit {
@@ -49,33 +48,23 @@ export class TypesenseService implements OnModuleInit {
     this.openai = new OpenAI({
       apiKey: openaiApiKey,
     });
-
-    this.ensureCollectionExists();
   }
 
-  private async ensureCollectionExists() {
+  private async ensureCollectionExists(collectionName: string) {
     try {
-      console.log('Checking if collection exists:', DOCS_COLLECTION);
-      await this.client.collections(DOCS_COLLECTION).retrieve();
-      console.log(`Collection '${DOCS_COLLECTION}' already exists.`);
+      await this.client.collections(collectionName).retrieve();
     } catch (error) {
-      console.log('Error checking for collection:', error, error.httpStatus);
-      if (
-        error.httpStatus === 404 ||
-        error.message?.includes('404') ||
-        error.name === 'ObjectNotFound'
-      ) {
-        console.log(`Collection '${DOCS_COLLECTION}' not found, creating...`);
-        await this.createCollection();
+      if (error.httpStatus === 404) {
+        await this.createCollection(collectionName);
       } else {
-        console.error('Error checking for collection:', error);
+        throw error;
       }
     }
   }
 
-  private async createCollection() {
+  private async createCollection(collectionName: string) {
     const schema: CollectionCreateSchema = {
-      name: DOCS_COLLECTION,
+      name: collectionName,
       fields: [
         { name: 'id', type: 'string' },
         { name: 'text', type: 'string' },
@@ -83,17 +72,11 @@ export class TypesenseService implements OnModuleInit {
         { name: 'source', type: 'string', facet: true },
       ],
     };
-
-    console.log('Creating collection:', schema);
-    try {
-      await this.client.collections().create(schema);
-      console.log(`Collection '${DOCS_COLLECTION}' created.`);
-    } catch (error) {
-      console.error('Error creating collection:', error);
-    }
+    await this.client.collections().create(schema);
   }
 
   async indexDocument(
+    collectionName: string,
     source: string,
     text: string,
     embedding: number[],
@@ -105,18 +88,15 @@ export class TypesenseService implements OnModuleInit {
       embedding,
     };
 
-    try {
-      return await this.client
-        .collections(DOCS_COLLECTION)
+    await this.ensureCollectionExists(collectionName);
+    return this.client
+        .collections(collectionName)
         .documents()
         .upsert(document);
-    } catch (error) {
-      console.error('Error indexing document:', error);
-      throw error;
-    }
   }
 
   async generateAndStoreEmbedding(
+    collectionName: string,
     source: string,
     chunks: string[],
   ): Promise<void> {
@@ -129,18 +109,19 @@ export class TypesenseService implements OnModuleInit {
         });
 
         const embedding = response.data[0].embedding;
-        await this.indexDocument(source, chunk, embedding);
+        await this.indexDocument(collectionName, source, chunk, embedding);
       } catch (error) {
         console.error('Error processing chunk:', error);
       }
     }
   }
 
-  async search(queryVector: number[], baseUrl?: string) {
+  async search(collectionName: string, queryVector: number[], baseUrl?: string) {
+    await this.ensureCollectionExists(collectionName);
     const searchRequests = {
       searches: [
         {
-          collection: DOCS_COLLECTION,
+          collection: collectionName,
           q: '*',
           vector_query: `embedding:([${queryVector.join(',')}], k: 5)`,
         },
@@ -157,15 +138,10 @@ export class TypesenseService implements OnModuleInit {
       commonSearchParams.filter_by = `source:=${baseUrl}`;
     }
 
-    try {
-      const searchResult = await this.client.multiSearch.perform(
-        searchRequests,
-        commonSearchParams,
-      );
-      return (searchResult.results[0] as any)?.hits || [];
-    } catch (error) {
-      console.error('Error searching in Typesense:', error);
-      throw error;
-    }
+    const searchResult = await this.client.multiSearch.perform(
+      searchRequests,
+      commonSearchParams,
+    );
+    return (searchResult.results[0] as any)?.hits || [];
   }
 }

@@ -1,7 +1,11 @@
-import { IsString, IsUrl } from 'class-validator';
+import { IsNotEmpty, IsString, IsUrl } from 'class-validator';
 
 export class IngestDto {
-  @IsString()
   @IsUrl()
+  @IsNotEmpty()
   url: string;
+
+  @IsString()
+  @IsNotEmpty()
+  appName: string;
 } 

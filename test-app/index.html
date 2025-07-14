@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Widget Test App</title>
+  <style>
+    body { font-family: sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; background-color: #f0f0f0; margin: 0; }
+    h1 { color: #333; }
+    #chat-container {
+        width: 400px;
+        height: 600px;
+        border: 2px dashed #ccc;
+        background-color: #fff;
+        padding: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    #error-log {
+        margin-top: 20px;
+        color: red;
+        font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Test App</h1>
+  <div id="chat-container"></div>
+  <div id="error-log"></div>
+
+  <script src="../info-chat-widget/dist/info-chat-widget.js"></script>
+  <script>
+    try {
+      if (window.InfoChatWidget && typeof window.InfoChatWidget.init === 'function') {
+        InfoChatWidget.init({
+          containerId: 'chat-container',
+          baseUrl: 'https://www.curacel.co/',
+          appName: 'curacel'
+        });
+      } else {
+        throw new Error('InfoChatWidget is not available. Check the script path and build process.');
+      }
+    } catch (e) {
+      document.getElementById('error-log').innerText = e.message;
+      console.error(e);
+    }
+  </script>
+
+</body>
+</html> 

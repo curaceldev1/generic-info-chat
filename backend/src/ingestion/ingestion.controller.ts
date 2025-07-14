@@ -8,7 +8,7 @@ export class IngestionController {
 
   @Post()
   async ingest(@Body() ingestDto: IngestDto) {
-    const { url } = ingestDto;
-    return this.ingestionService.crawlUrl(url);
+    const { url, appName } = ingestDto;
+    return this.ingestionService.crawlUrl(url, appName);
   }
 }
