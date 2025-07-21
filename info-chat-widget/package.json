@@ -6,7 +6,7 @@
   "main": "dist/info-chat-widget.js",
   "browser": "dist/info-chat-widget.js",
   "scripts": {
-    "build": "rollup -c && mkdir -p ../widget && cp -f dist/info-chat-widget.js ../widget/",
+    "build": "rollup -c && sudo mkdir -p /var/www/html/widget && sudo cp -f dist/info-chat-widget.js /var/www/html/widget/",
     "dev": "rollup -c -w"
   },
   "keywords": [
