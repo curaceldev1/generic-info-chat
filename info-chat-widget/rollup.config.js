@@ -17,7 +17,8 @@ export default {
   plugins: [
     replace({
       'process.env.NODE_ENV': JSON.stringify('production'),
-      'process.env.REACT_APP_BACKEND_URL': JSON.stringify(process.env.REACT_APP_BACKEND_URL || 'http://ec2-3-93-189-47.compute-1.amazonaws.com:3000'),
+      // 'process.env.REACT_APP_BACKEND_URL': JSON.stringify(process.env.REACT_APP_BACKEND_URL || 'http://ec2-3-93-189-47.compute-1.amazonaws.com:3000'),
+      'process.env.REACT_APP_BACKEND_URL': JSON.stringify(process.env.REACT_APP_BACKEND_URL || 'https://random.crl.to:3000'),
       preventAssignment: true
     }),
     postcss({
