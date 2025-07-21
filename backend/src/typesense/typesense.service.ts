@@ -54,7 +54,13 @@ export class TypesenseService implements OnModuleInit {
     try {
       await this.client.collections(collectionName).retrieve();
     } catch (error) {
-      if (error.httpStatus === 404) {
+      // Check for 404 status or "Collection not found" message
+      if (
+        error.httpStatus === 404 || 
+        error.message?.includes('Collection not found') ||
+        error.toString().includes('Collection not found')
+      ) {
+        console.log(`Collection '${collectionName}' not found. Creating it...`);
         await this.createCollection(collectionName);
       } else {
         throw error;
@@ -72,7 +78,21 @@ export class TypesenseService implements OnModuleInit {
         { name: 'source', type: 'string', facet: true },
       ],
     };
-    await this.client.collections().create(schema);
+
+    try {
+      await this.client.collections().create(schema);
+      console.log(`Successfully created collection '${collectionName}'`);
+    } catch (error) {
+      console.error(`Failed to create collection '${collectionName}':`, error);
+      
+      // If collection already exists, that's fine
+      if (error.message?.includes('already exists') || error.toString().includes('already exists')) {
+        console.log(`Collection '${collectionName}' already exists, continuing...`);
+        return;
+      }
+      
+      throw error;
+    }
   }
 
   async indexDocument(
@@ -88,11 +108,16 @@ export class TypesenseService implements OnModuleInit {
       embedding,
     };
 
-    await this.ensureCollectionExists(collectionName);
-    return this.client
+    try {
+      await this.ensureCollectionExists(collectionName);
+      return await this.client
         .collections(collectionName)
         .documents()
         .upsert(document);
+    } catch (error) {
+      console.error(`Failed to index document in collection '${collectionName}':`, error);
+      throw error;
+    }
   }
 
   async generateAndStoreEmbedding(
@@ -111,7 +136,15 @@ export class TypesenseService implements OnModuleInit {
         const embedding = response.data[0].embedding;
         await this.indexDocument(collectionName, source, chunk, embedding);
       } catch (error) {
-        console.error('Error processing chunk:', error);
+        console.error(`Error processing chunk for collection '${collectionName}':`, error);
+        
+        // If it's a collection-related error, try to provide more context
+        if (error.message?.includes('Collection not found') || error.toString().includes('Collection not found')) {
+          console.error(`Collection '${collectionName}' was not found and could not be created automatically.`);
+        }
+        
+        // Don't throw here to continue processing other chunks
+        // throw error; // Uncomment if you want to stop on first error
       }
     }
   }
