@@ -6,7 +6,7 @@
   "main": "dist/info-chat-widget.js",
   "browser": "dist/info-chat-widget.js",
   "scripts": {
-    "build": "rollup -c",
+    "build": "rollup -c && sudo mkdir -p /var/www/html/widget && sudo cp -f dist/info-chat-widget.js /var/www/html/widget/",
     "dev": "rollup -c -w"
   },
   "keywords": [
@@ -25,12 +25,13 @@
     "@babel/preset-react": "^7.18.6",
     "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-json": "^6.0.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-replace": "^5.0.2",
     "@rollup/plugin-terser": "^0.4.4",
+    "postcss": "^8.5.6",
     "rollup": "^3.29.4",
-    "rollup-plugin-postcss": "^4.0.2",
-    "@rollup/plugin-json": "^6.0.0",
-    "rollup-plugin-polyfill-node": "^0.12.0"
+    "rollup-plugin-polyfill-node": "^0.12.0",
+    "rollup-plugin-postcss": "^4.0.2"
   }
-} 
+}
