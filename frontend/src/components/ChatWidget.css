@@ -29,8 +29,9 @@ body {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   border: 2px solid #e0e0e0;
   transition: all 0.3s ease;
-  min-width: 300px;
-  max-width: 500px;
+  min-width: 500px;
+  max-width: 800px;
+  width: 80vw;
 }
 
 .chat-input-container:focus-within {
@@ -92,13 +93,15 @@ body {
   border-radius: 20px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
   margin-bottom: 20px;
-  max-width: 500px;
-  width: 100%;
-  max-height: 400px;
-  overflow-y: auto;
+  max-width: 800px;
+  width: 80vw;
+  max-height: 600px;
+  overflow: hidden;
   opacity: 0;
   transform: translateY(20px);
   transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .chat-conversation.visible {
@@ -114,6 +117,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 
 .chat-header h2 {
@@ -148,6 +152,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 15px;
+  flex-grow: 1;
+  overflow-y: auto;
 }
 
 .message {
@@ -211,6 +217,39 @@ body {
 
 .message.bot .sources a:hover {
   text-decoration: underline;
+}
+
+/* Input area inside conversation - keep same design as original */
+.chat-conversation .chat-input-container {
+  margin: 0;
+  border-radius: 0 0 20px 20px;
+  box-shadow: none;
+  border: none;
+  border-top: 1px solid #e0e0e0;
+  padding: 15px 25px;
+  min-width: auto;
+  max-width: none;
+  width: auto;
+  background-color: white;
+}
+
+.chat-conversation .chat-input-container::before {
+  content: "🤖";
+  font-size: 1.2rem;
+  margin-right: 12px;
+  opacity: 0.7;
+}
+
+.chat-conversation .chat-input {
+  padding: 8px 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.chat-conversation .chat-input:focus {
+  background: transparent;
+  border: none;
 }
 
 /* Loading indicator */

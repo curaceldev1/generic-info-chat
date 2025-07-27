@@ -145,28 +145,50 @@ const ChatWidget = () => {
               </div>
             )}
           </div>
+
+          {/* Input inside conversation */}
+          <div className="chat-input-container">
+            <input
+              type="text"
+              className="chat-input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Message AI Assistant..."
+              disabled={isLoading}
+            />
+            <button 
+              className="send-button"
+              onClick={handleSend} 
+              disabled={isLoading}
+            >
+              ↑
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Chat input container */}
-      <div className="chat-input-container">
-        <input
-          type="text"
-          className="chat-input"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Ask me about your data..."
-          disabled={isLoading}
-        />
-        <button 
-          className="send-button"
-          onClick={handleSend} 
-          disabled={isLoading}
-        >
-          ↑
-        </button>
-      </div>
+      {/* Standalone input when not expanded */}
+      {!hasMessages && (
+        <div className="chat-input-container">
+          <input
+            type="text"
+            className="chat-input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Ask me about your data..."
+            disabled={isLoading}
+          />
+          <button 
+            className="send-button"
+            onClick={handleSend} 
+            disabled={isLoading}
+          >
+            ↑
+          </button>
+        </div>
+      )}
 
       {/* Ingestion modal */}
       {showModal && (
