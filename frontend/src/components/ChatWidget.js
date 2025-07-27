@@ -91,7 +91,11 @@ const ChatWidget = () => {
             <div className="chat-header-actions">
               <button
                 className="header-button"
-                onClick={() => { setShowModal(true); setIngestStatus(null); }}
+                onClick={() => { 
+                  console.log('+ button clicked, setting showModal to true');
+                  setShowModal(true); 
+                  setIngestStatus(null); 
+                }}
                 title="Ingest a new URL"
               >
                 +
@@ -111,6 +115,14 @@ const ChatWidget = () => {
           </div>
           
           <div className="chat-messages">
+            {/* Welcome message when no messages yet */}
+            {messages.length === 0 && !isLoading && (
+              <div className="welcome-message">
+                <div className="welcome-title">How can AI Assistant help?</div>
+                <div className="welcome-subtitle">AI Assistant joined</div>
+              </div>
+            )}
+            
             {messages.map((msg, index) => (
               <div key={index} className={`message ${msg.sender}`}>
                 {msg.sender === 'bot' ? (
@@ -200,23 +212,23 @@ const ChatWidget = () => {
               className="modal-input"
               value={ingestUrl}
               onChange={e => setIngestUrl(e.target.value)}
-              placeholder="Enter URL to ingest"
+              placeholder="Enter URL to ingest (e.g., https://example.com)"
               disabled={ingestStatus === 'loading'}
             />
             <div className="modal-buttons">
-              <button
-                className="modal-button primary"
-                onClick={handleIngest}
-                disabled={ingestStatus === 'loading' || !ingestUrl.trim()}
-              >
-                {ingestStatus === 'loading' ? 'Ingesting...' : 'Submit'}
-              </button>
               <button
                 className="modal-button secondary"
                 onClick={() => { setShowModal(false); setIngestUrl(''); setIngestStatus(null); }}
                 disabled={ingestStatus === 'loading'}
               >
                 Cancel
+              </button>
+              <button
+                className="modal-button primary"
+                onClick={handleIngest}
+                disabled={ingestStatus === 'loading' || !ingestUrl.trim()}
+              >
+                {ingestStatus === 'loading' ? 'Ingesting...' : 'Submit'}
               </button>
             </div>
             {ingestStatus === 'success' && (
@@ -235,7 +247,7 @@ const ChatWidget = () => {
           <div className="modal-content">
             <div style={{ textAlign: 'center' }}>
               <div className="spinner" />
-              <div style={{ color: '#007bff', fontWeight: 'bold' }}>Ingesting...</div>
+              <div style={{ color: '#007bff', fontWeight: 'bold', fontSize: '1.1rem' }}>Ingesting...</div>
             </div>
           </div>
         </div>
