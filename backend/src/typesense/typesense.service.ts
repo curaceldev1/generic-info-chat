@@ -21,13 +21,6 @@ export class TypesenseService implements OnModuleInit {
     const typesenseApiKey = this.configService.get<string>('TYPESENSE_API_KEY');
     const openaiApiKey = this.configService.get<string>('OPENAI_API_KEY');
 
-    console.log('Typesense Configuration:');
-    console.log('  Host:', typesenseHost);
-    console.log('  Port:', typesensePort);
-    console.log('  Protocol:', typesenseProtocol);
-    console.log('  API Key:', typesenseApiKey ? `${typesenseApiKey.substring(0, 8)}...` : 'NOT SET');
-    console.log('  OpenAI API Key:', openaiApiKey ? `${openaiApiKey.substring(0, 8)}...` : 'NOT SET');
-
     if (
       !typesenseHost ||
       !typesensePort ||

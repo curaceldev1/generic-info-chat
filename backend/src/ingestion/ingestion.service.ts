@@ -33,7 +33,6 @@ export class IngestionService implements OnModuleInit {
         },
       });
 
-      console.log('crawl result', result);
       if (result && typeof result === 'object' && 'data' in result && Array.isArray((result as any).data)) {
         let totalChunks = 0;
         for (const page of (result as any).data) {
