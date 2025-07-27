@@ -12,6 +12,8 @@ const ChatWidget = () => {
   const [ingestUrl, setIngestUrl] = useState('');
   const [ingestStatus, setIngestStatus] = useState(null);
   const [retryStatus, setRetryStatus] = useState(null);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Loader is active if either ingestion is loading (modal or retry)
   const isIngesting = ingestStatus === 'loading' || retryStatus === 'loading';
@@ -82,32 +84,61 @@ const ChatWidget = () => {
   const hasMessages = messages.length > 0 || isLoading;
 
   return (
-    <div className={`chat-widget ${hasMessages ? 'expanded' : ''}`}>
+    <div className={`chat-widget ${hasMessages ? 'expanded' : ''} ${isMinimized ? 'minimized' : ''}`}>
+      {/* Minimized state - floating chat button */}
+      {isMinimized && (
+        <div className="tooltip-container">
+          <div className="chat-minimized" onClick={() => setIsMinimized(false)}>
+            <div className="minimized-icon">🤖</div>
+            {messages.length > 0 && <div className="message-indicator">{messages.length}</div>}
+          </div>
+          <div className="tooltip">Click to expand chat</div>
+        </div>
+      )}
+
       {/* Chat conversation area */}
-      {hasMessages && (
+      {hasMessages && !isMinimized && !isCollapsed && (
         <div className={`chat-conversation ${hasMessages ? 'visible' : ''}`}>
           <div className="chat-header">
             <h2>AI Assistant</h2>
             <div className="chat-header-actions">
-              <button
-                className="header-button"
-                onClick={() => { 
-                  console.log('+ button clicked, setting showModal to true');
-                  setShowModal(true); 
-                  setIngestStatus(null); 
-                }}
-                title="Ingest a new URL"
-              >
-                +
-              </button>
-              <button
-                className="header-button"
-                onClick={handleRetryIngest}
-                title="Reingest current site"
-                disabled={retryStatus === 'loading'}
-              >
-                ⟳
-              </button>
+              <div className="tooltip-container">
+                <button
+                  className="header-button"
+                  onClick={() => setIsCollapsed(true)}
+                >
+                  ⌃
+                </button>
+                <div className="tooltip">Collapse conversation</div>
+              </div>
+              <div className="tooltip-container">
+                <button
+                  className="header-button"
+                  onClick={() => setIsMinimized(true)}
+                >
+                  −
+                </button>
+                <div className="tooltip">Minimize to floating button</div>
+              </div>
+              <div className="tooltip-container">
+                <button
+                  className="header-button"
+                  onClick={() => { setShowModal(true); setIngestStatus(null); }}
+                >
+                  +
+                </button>
+                <div className="tooltip">Ingest a new URL</div>
+              </div>
+              <div className="tooltip-container">
+                <button
+                  className="header-button"
+                  onClick={handleRetryIngest}
+                  disabled={retryStatus === 'loading'}
+                >
+                  ⟳
+                </button>
+                <div className="tooltip">Reingest current site</div>
+              </div>
               {retryStatus === 'loading' && <span style={{ color: 'white', marginLeft: 4, fontSize: '1rem' }}>...</span>}
               {retryStatus === 'success' && <span style={{ color: 'lightgreen', marginLeft: 4, fontSize: '1rem' }}>✓</span>}
               {retryStatus === 'error' && <span style={{ color: 'red', marginLeft: 4, fontSize: '1rem' }}>!</span>}
@@ -169,6 +200,42 @@ const ChatWidget = () => {
               placeholder="Message AI Assistant..."
               disabled={isLoading}
             />
+            <div className="tooltip-container">
+              <button 
+                className="send-button"
+                onClick={handleSend} 
+                disabled={isLoading}
+              >
+                ↑
+              </button>
+              <div className="tooltip">Send message</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Collapsed state - just input bar with expand button */}
+      {hasMessages && !isMinimized && isCollapsed && (
+        <div className="chat-input-container collapsed">
+          <div className="tooltip-container">
+            <button
+              className="expand-button"
+              onClick={() => setIsCollapsed(false)}
+            >
+              ⌄
+            </button>
+            <div className="tooltip">Expand conversation</div>
+          </div>
+          <input
+            type="text"
+            className="chat-input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Message AI Assistant..."
+            disabled={isLoading}
+          />
+          <div className="tooltip-container">
             <button 
               className="send-button"
               onClick={handleSend} 
@@ -176,12 +243,13 @@ const ChatWidget = () => {
             >
               ↑
             </button>
+            <div className="tooltip">Send message</div>
           </div>
         </div>
       )}
 
       {/* Standalone input when not expanded */}
-      {!hasMessages && (
+      {!hasMessages && !isMinimized && (
         <div className="chat-input-container">
           <input
             type="text"
@@ -192,13 +260,16 @@ const ChatWidget = () => {
             placeholder="Ask me about your data..."
             disabled={isLoading}
           />
-          <button 
-            className="send-button"
-            onClick={handleSend} 
-            disabled={isLoading}
-          >
-            ↑
-          </button>
+          <div className="tooltip-container">
+            <button 
+              className="send-button"
+              onClick={handleSend} 
+              disabled={isLoading}
+            >
+              ↑
+            </button>
+            <div className="tooltip">Send message</div>
+          </div>
         </div>
       )}
 
