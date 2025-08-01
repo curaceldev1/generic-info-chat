@@ -2,7 +2,7 @@ name: Deploy to Ubuntu VM
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -124,7 +124,7 @@ jobs:
             echo "⚠️  SSH connection test failed, but continuing with deployment..."
           }
           
-          echo "Starting deployment..."
+          echo "Starting deployment using deploy.sh script..."
           ssh -o ConnectTimeout=30 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VM_USER@$VM_HOST << 'EOF'
             set -e
             echo "🚀 Starting deployment process..."
@@ -139,69 +139,10 @@ jobs:
             git reset --hard origin/main
             git clean -fd
             
-            # Check if Node.js is installed
-            if ! command -v node &> /dev/null; then
-              echo "❌ Node.js not found. Installing Node.js..."
-              curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-              sudo apt-get install -y nodejs
-            fi
-            
-            # Check if PM2 is installed
-            if ! command -v pm2 &> /dev/null; then
-              echo "📦 Installing PM2 globally..."
-              sudo npm install -g pm2
-            fi
-            
-            # Backend deployment
-            echo "🔧 Deploying backend..."
-            cd backend
-            
-            # Install dependencies
-            echo "📦 Installing backend dependencies..."
-            npm ci --production=false || npm install --production=false
-            
-            # Build the project
-            echo "🔨 Building backend..."
-            npm run build
-            
-            # Stop existing PM2 process if running
-            echo "🛑 Stopping existing backend process..."
-            pm2 stop generic-info-chat-backend || true
-            pm2 delete generic-info-chat-backend || true
-            
-            # Start backend with PM2
-            echo "🚀 Starting backend with PM2..."
-            pm2 start dist/main.js --name "generic-info-chat-backend" --time
-            
-            # Save PM2 configuration
-            pm2 save
-            
-            # Setup PM2 to start on boot
-            pm2 startup || true
-            
-            echo "✅ Backend deployed successfully!"
-            
-            # Widget deployment
-            echo "🔧 Deploying info-chat-widget..."
-            cd ../info-chat-widget
-            
-            # Install dependencies
-            echo "📦 Installing widget dependencies..."
-            npm ci || npm install
-            
-            # Build widget
-            echo "🔨 Building widget..."
-            npm run build
-            
-            echo "✅ Widget deployed successfully!"
-            
-            # Show PM2 status
-            echo "📊 PM2 Status:"
-            pm2 status
-            
-            # Show recent logs
-            echo "📋 Recent backend logs:"
-            pm2 logs generic-info-chat-backend --lines 10
+            # Make deploy script executable and run it
+            echo "🔧 Running deployment script..."
+            chmod +x deploy.sh
+            ./deploy.sh deploy
             
             echo "🎉 Deployment completed successfully!"
           EOF
@@ -210,28 +151,13 @@ jobs:
         env:
           VM_HOST: ${{ secrets.VM_HOST }}
           VM_USER: ${{ secrets.VM_USER }}
+          PROJECT_PATH: ${{ env.PROJECT_PATH }}
         run: |
-          ssh $VM_USER@$VM_HOST << 'EOF'
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VM_USER@$VM_HOST << 'EOF'
             echo "🔍 Verifying deployment..."
-            
-            # Check if backend is running
-            if pm2 list | grep -q "generic-info-chat-backend.*online"; then
-              echo "✅ Backend is running successfully"
-            else
-              echo "❌ Backend is not running"
-              pm2 logs generic-info-chat-backend --lines 20
-              exit 1
-            fi
-            
-            # Check if widget files exist
-            if [ -f "$PROJECT_PATH/info-chat-widget/dist/info-chat-widget.js" ]; then
-              echo "✅ Widget files deployed successfully"
-            else
-              echo "❌ Widget files not found"
-              exit 1
-            fi
-            
-            echo "🎉 All verifications passed!"
+            cd $PROJECT_PATH
+            ./deploy.sh status
+            echo "🎉 Verification completed!"
           EOF
 
       - name: Deployment Summary
