@@ -125,7 +125,7 @@ deploy_backend() {
     log "Starting backend with PM2..."
     pm2 start ecosystem.config.js --env production || {
         error "Failed to start backend with PM2"
-        pm2 logs "$BACKEND_NAME" --lines 10
+        pm2 logs "$BACKEND_NAME" --lines 10 --nostream || true
         return 1
     }
     
@@ -170,7 +170,7 @@ verify_deployment() {
         success "Backend is running successfully"
     else
         error "Backend is not running"
-        pm2 logs "$BACKEND_NAME" --lines 20
+        pm2 logs "$BACKEND_NAME" --lines 20 --nostream || true
         return 1
     fi
     
@@ -192,7 +192,9 @@ verify_deployment() {
 # Function to show logs
 show_logs() {
     log "Recent backend logs:"
-    pm2 logs "$BACKEND_NAME" --lines 10
+    pm2 logs "$BACKEND_NAME" --lines 10 --nostream || {
+        warning "Could not display logs, continuing..."
+    }
 }
 
 # Function to rollback
