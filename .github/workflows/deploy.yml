@@ -137,7 +137,12 @@ jobs:
             echo "📥 Pulling latest changes from git..."
             git fetch origin
             git reset --hard origin/main
-            git clean -fd
+            
+            # Clean git files but continue even if some files can't be removed
+            echo "🧹 Cleaning git files..."
+            git clean -fd || {
+                echo "⚠️  Some files could not be cleaned (likely typesense-data), continuing..."
+            }
             
             # Make deploy script executable and run it
             echo "🔧 Running deployment script..."

@@ -89,7 +89,12 @@ pull_changes() {
     
     # Reset to latest main branch
     git reset --hard origin/main
-    git clean -fd
+    
+    # Clean git files but skip typesense-data directory
+    echo "Cleaning git files (skipping typesense-data)..."
+    git clean -fd || {
+        warning "Some files could not be cleaned (likely typesense-data), continuing..."
+    }
     
     success "Latest changes pulled successfully"
 }
