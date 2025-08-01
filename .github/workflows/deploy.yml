@@ -125,13 +125,13 @@ jobs:
           }
           
           echo "Starting deployment using deploy.sh script..."
-          ssh -o ConnectTimeout=30 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VM_USER@$VM_HOST << 'EOF'
+          ssh -o ConnectTimeout=30 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VM_USER@$VM_HOST << EOF
             set -e
             echo "🚀 Starting deployment process..."
             
             # Navigate to project directory
             cd $PROJECT_PATH
-            echo "📁 Current directory: $(pwd)"
+            echo "📁 Current directory: \$(pwd)"
             
             # Pull latest changes
             echo "📥 Pulling latest changes from git..."
@@ -153,7 +153,7 @@ jobs:
           VM_USER: ${{ secrets.VM_USER }}
           PROJECT_PATH: ${{ env.PROJECT_PATH }}
         run: |
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VM_USER@$VM_HOST << 'EOF'
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VM_USER@$VM_HOST << EOF
             echo "🔍 Verifying deployment..."
             cd $PROJECT_PATH
             ./deploy.sh status
