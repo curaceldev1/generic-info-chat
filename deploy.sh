@@ -123,15 +123,23 @@ deploy_backend() {
     
     # Start backend with PM2
     log "Starting backend with PM2..."
-    pm2 start ecosystem.config.js --env production
+    pm2 start ecosystem.config.js --env production || {
+        error "Failed to start backend with PM2"
+        pm2 logs "$BACKEND_NAME" --lines 10
+        return 1
+    }
     
     # Save PM2 configuration
-    pm2 save
+    pm2 save || {
+        warning "Failed to save PM2 configuration, continuing..."
+    }
     
     # Setup PM2 to start on boot (only if not already set)
-    if ! pm2 startup | grep -q "already inited"; then
-        pm2 startup
-    fi
+    echo "Setting up PM2 startup..."
+    pm2 startup || {
+        warning "PM2 startup setup failed (may require manual setup), continuing..."
+        echo "To manually setup PM2 startup, run: sudo pm2 startup"
+    }
     
     success "Backend deployed successfully"
 }
