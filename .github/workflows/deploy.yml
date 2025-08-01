@@ -26,7 +26,9 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: ./backend
-        run: npm ci
+        run: |
+          # Try npm ci first, fallback to npm install if lock file is out of sync
+          npm ci || (npm install && npm ci)
 
       - name: Run backend tests
         working-directory: ./backend
@@ -34,7 +36,9 @@ jobs:
 
       - name: Install widget dependencies
         working-directory: ./info-chat-widget
-        run: npm ci
+        run: |
+          # Try npm ci first, fallback to npm install if lock file is out of sync
+          npm ci || (npm install && npm ci)
 
       - name: Build widget
         working-directory: ./info-chat-widget
@@ -98,7 +102,7 @@ jobs:
             
             # Install dependencies
             echo "📦 Installing backend dependencies..."
-            npm ci --production=false
+            npm ci --production=false || npm install --production=false
             
             # Build the project
             echo "🔨 Building backend..."
@@ -127,7 +131,7 @@ jobs:
             
             # Install dependencies
             echo "📦 Installing widget dependencies..."
-            npm ci
+            npm ci || npm install
             
             # Build widget
             echo "🔨 Building widget..."

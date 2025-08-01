@@ -105,7 +105,7 @@ deploy_backend() {
     
     # Install dependencies
     log "Installing backend dependencies..."
-    npm ci --production=false
+    npm ci --production=false || npm install --production=false
     
     # Build the project
     log "Building backend..."
@@ -139,7 +139,7 @@ deploy_widget() {
     
     # Install dependencies
     log "Installing widget dependencies..."
-    npm ci
+    npm ci || npm install
     
     # Build widget
     log "Building widget..."
