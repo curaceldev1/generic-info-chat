@@ -61,7 +61,10 @@ jobs:
       - name: Add host to known_hosts
         run: |
           mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
           ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          echo "SSH directory created and host added to known_hosts"
 
       - name: Deploy to Ubuntu VM
         env:
@@ -69,7 +72,14 @@ jobs:
           VM_USER: ${{ secrets.VM_USER }}
           PROJECT_PATH: ${{ env.PROJECT_PATH }}
         run: |
-          ssh $VM_USER@$VM_HOST << 'EOF'
+          echo "Testing SSH connection..."
+          if ! ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no $VM_USER@$VM_HOST "echo 'SSH connection successful'"; then
+            echo "❌ SSH connection failed"
+            exit 1
+          fi
+          
+          echo "Starting deployment..."
+          ssh -o ConnectTimeout=30 $VM_USER@$VM_HOST << 'EOF'
             set -e
             echo "🚀 Starting deployment process..."
             
