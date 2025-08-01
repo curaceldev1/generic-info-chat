@@ -1,0 +1,186 @@
+name: Deploy to Ubuntu VM
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '22'
+  PROJECT_PATH: '/home/ubuntu/generic-info-chat'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run backend tests
+        working-directory: ./backend
+        run: npm test
+
+      - name: Install widget dependencies
+        working-directory: ./info-chat-widget
+        run: npm ci
+
+      - name: Build widget
+        working-directory: ./info-chat-widget
+        run: npm run build
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Ubuntu VM
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          PROJECT_PATH: ${{ env.PROJECT_PATH }}
+        run: |
+          ssh $VM_USER@$VM_HOST << 'EOF'
+            set -e
+            echo "🚀 Starting deployment process..."
+            
+            # Navigate to project directory
+            cd $PROJECT_PATH
+            echo "📁 Current directory: $(pwd)"
+            
+            # Pull latest changes
+            echo "📥 Pulling latest changes from git..."
+            git fetch origin
+            git reset --hard origin/main
+            git clean -fd
+            
+            # Check if Node.js is installed
+            if ! command -v node &> /dev/null; then
+              echo "❌ Node.js not found. Installing Node.js..."
+              curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+              sudo apt-get install -y nodejs
+            fi
+            
+            # Check if PM2 is installed
+            if ! command -v pm2 &> /dev/null; then
+              echo "📦 Installing PM2 globally..."
+              sudo npm install -g pm2
+            fi
+            
+            # Backend deployment
+            echo "🔧 Deploying backend..."
+            cd backend
+            
+            # Install dependencies
+            echo "📦 Installing backend dependencies..."
+            npm ci --production=false
+            
+            # Build the project
+            echo "🔨 Building backend..."
+            npm run build
+            
+            # Stop existing PM2 process if running
+            echo "🛑 Stopping existing backend process..."
+            pm2 stop generic-info-chat-backend || true
+            pm2 delete generic-info-chat-backend || true
+            
+            # Start backend with PM2
+            echo "🚀 Starting backend with PM2..."
+            pm2 start dist/main.js --name "generic-info-chat-backend" --time
+            
+            # Save PM2 configuration
+            pm2 save
+            
+            # Setup PM2 to start on boot
+            pm2 startup || true
+            
+            echo "✅ Backend deployed successfully!"
+            
+            # Widget deployment
+            echo "🔧 Deploying info-chat-widget..."
+            cd ../info-chat-widget
+            
+            # Install dependencies
+            echo "📦 Installing widget dependencies..."
+            npm ci
+            
+            # Build widget
+            echo "🔨 Building widget..."
+            npm run build
+            
+            echo "✅ Widget deployed successfully!"
+            
+            # Show PM2 status
+            echo "📊 PM2 Status:"
+            pm2 status
+            
+            # Show recent logs
+            echo "📋 Recent backend logs:"
+            pm2 logs generic-info-chat-backend --lines 10
+            
+            echo "🎉 Deployment completed successfully!"
+          EOF
+
+      - name: Verify deployment
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          ssh $VM_USER@$VM_HOST << 'EOF'
+            echo "🔍 Verifying deployment..."
+            
+            # Check if backend is running
+            if pm2 list | grep -q "generic-info-chat-backend.*online"; then
+              echo "✅ Backend is running successfully"
+            else
+              echo "❌ Backend is not running"
+              pm2 logs generic-info-chat-backend --lines 20
+              exit 1
+            fi
+            
+            # Check if widget files exist
+            if [ -f "$PROJECT_PATH/info-chat-widget/dist/info-chat-widget.js" ]; then
+              echo "✅ Widget files deployed successfully"
+            else
+              echo "❌ Widget files not found"
+              exit 1
+            fi
+            
+            echo "🎉 All verifications passed!"
+          EOF
+
+      - name: Deployment Summary
+        if: always()
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend**: Deployed and running with PM2" >> $GITHUB_STEP_SUMMARY
+          echo "- **Widget**: Built and available at /home/ubuntu/generic-info-chat/info-chat-widget/dist/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: Ubuntu VM" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY 
