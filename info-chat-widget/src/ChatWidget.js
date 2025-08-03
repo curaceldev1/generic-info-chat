@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import './ChatWidget.css';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
 
-const ChatWidget = ({ baseUrl, appName }) => {
+const ChatWidget = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -12,6 +12,8 @@ const ChatWidget = ({ baseUrl, appName }) => {
   const [ingestUrl, setIngestUrl] = useState('');
   const [ingestStatus, setIngestStatus] = useState(null);
   const [retryStatus, setRetryStatus] = useState(null);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Loader is active if either ingestion is loading (modal or retry)
   const isIngesting = ingestStatus === 'loading' || retryStatus === 'loading';
@@ -78,139 +80,245 @@ const ChatWidget = ({ baseUrl, appName }) => {
     setTimeout(() => setRetryStatus(null), 2000);
   };
 
+  const hasMessages = messages.length > 0 || isLoading;
+
   return (
-    <div className="chat-widget">
-      {/* Loader overlay */}
-      {isIngesting && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(255,255,255,0.7)',
-          zIndex: 2000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div className="spinner" style={{
-              border: '4px solid #f3f3f3',
-              borderTop: '4px solid #007bff',
-              borderRadius: '50%',
-              width: 40,
-              height: 40,
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 10px auto'
-            }} />
-            <div style={{ color: '#007bff', fontWeight: 'bold' }}>Ingesting...</div>
+    <div className={`chat-widget ${hasMessages ? 'expanded' : ''} ${isMinimized ? 'minimized' : ''}`}>
+      {/* Minimized state - floating chat button */}
+      {isMinimized && (
+        <div className="tooltip-container">
+          <div className="chat-minimized" onClick={() => setIsMinimized(false)}>
+            <div className="minimized-icon">🤖</div>
+            {messages.length > 0 && <div className="message-indicator">{messages.length}</div>}
           </div>
+          <div className="tooltip">Click to expand chat</div>
         </div>
       )}
-      <div className="chat-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h2 style={{ margin: 0 }}>AI Assistant</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            style={{ fontSize: '1.5rem', background: 'none', border: 'none', color: 'white', cursor: 'pointer', marginLeft: '10px' }}
-            onClick={() => { setShowModal(true); setIngestStatus(null); }}
-            title="Ingest a new URL"
-          >
-            +
-          </button>
-          <button
-            style={{ fontSize: '1.3rem', background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}
-            onClick={handleRetryIngest}
-            title="Reingest current site"
-            disabled={retryStatus === 'loading'}
-          >
-            ⟳
-          </button>
-          {retryStatus === 'loading' && <span style={{ color: 'white', marginLeft: 4, fontSize: '1rem' }}>...</span>}
-          {retryStatus === 'success' && <span style={{ color: 'lightgreen', marginLeft: 4, fontSize: '1rem' }}>✓</span>}
-          {retryStatus === 'error' && <span style={{ color: 'red', marginLeft: 4, fontSize: '1rem' }}>!</span>}
-        </div>
-      </div>
-      <div className="chat-messages">
-        {messages.map((msg, index) => (
-          <div key={index} className={`message ${msg.sender}`}>
-            {msg.sender === 'bot' ? (
-              <div dangerouslySetInnerHTML={{ __html: msg.text }} />
-            ) : (
-              <p>{msg.text}</p>
+
+      {/* Chat conversation area */}
+      {hasMessages && !isMinimized && !isCollapsed && (
+        <div className={`chat-conversation ${hasMessages ? 'visible' : ''}`}>
+          <div className="chat-header">
+            <h2>AI Assistant</h2>
+            <div className="chat-header-actions">
+              <div className="tooltip-container">
+                <button
+                  className="header-button"
+                  onClick={() => setIsCollapsed(true)}
+                >
+                  ⌃
+                </button>
+                <div className="tooltip">Collapse conversation</div>
+              </div>
+              <div className="tooltip-container">
+                <button
+                  className="header-button"
+                  onClick={() => setIsMinimized(true)}
+                >
+                  −
+                </button>
+                <div className="tooltip">Minimize to floating button</div>
+              </div>
+              <div className="tooltip-container">
+                <button
+                  className="header-button"
+                  onClick={() => { setShowModal(true); setIngestStatus(null); }}
+                >
+                  +
+                </button>
+                <div className="tooltip">Ingest a new URL</div>
+              </div>
+              <div className="tooltip-container">
+                <button
+                  className="header-button"
+                  onClick={handleRetryIngest}
+                  disabled={retryStatus === 'loading'}
+                >
+                  ⟳
+                </button>
+                <div className="tooltip">Reingest current site</div>
+              </div>
+              {retryStatus === 'loading' && <span style={{ color: 'white', marginLeft: 4, fontSize: '1rem' }}>...</span>}
+              {retryStatus === 'success' && <span style={{ color: 'lightgreen', marginLeft: 4, fontSize: '1rem' }}>✓</span>}
+              {retryStatus === 'error' && <span style={{ color: 'red', marginLeft: 4, fontSize: '1rem' }}>!</span>}
+            </div>
+          </div>
+          
+          <div className="chat-messages">
+            {/* Welcome message when no messages yet */}
+            {messages.length === 0 && !isLoading && (
+              <div className="welcome-message">
+                <div className="welcome-title">How can AI Assistant help?</div>
+                <div className="welcome-subtitle">AI Assistant joined</div>
+              </div>
             )}
-            {msg.sources && msg.sources.length > 0 && (
-              <div className="sources">
-                <strong>Sources:</strong>
-                <ul>
-                  {msg.sources.map((source, i) => (
-                    <li key={i}>
-                      <a href={source} target="_blank" rel="noopener noreferrer">
-                        {source}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+            
+            {messages.map((msg, index) => (
+              <div key={index} className={`message ${msg.sender}`}>
+                {msg.sender === 'bot' ? (
+                  <div dangerouslySetInnerHTML={{ __html: msg.text }} />
+                ) : (
+                  <p>{msg.text}</p>
+                )}
+                {msg.sources && msg.sources.length > 0 && (
+                  <div className="sources">
+                    <strong>Sources:</strong>
+                    <ul>
+                      {msg.sources.map((source, i) => (
+                        <li key={i}>
+                          <a href={source} target="_blank" rel="noopener noreferrer">
+                            {source}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ))}
+            {isLoading && (
+              <div className="loading-message">
+                <span>Thinking</span>
+                <div className="loading-dots">
+                  <div className="loading-dot"></div>
+                  <div className="loading-dot"></div>
+                  <div className="loading-dot"></div>
+                </div>
               </div>
             )}
           </div>
-        ))}
-        {isLoading && <div className="message bot">Thinking...</div>}
-      </div>
-      <div className="chat-input">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Ask a question..."
-          disabled={isLoading}
-        />
-        <button onClick={handleSend} disabled={isLoading}>
-          Send
-        </button>
-      </div>
+
+          {/* Input inside conversation */}
+          <div className="chat-input-container">
+            <input
+              type="text"
+              className="chat-input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Message AI Assistant..."
+              disabled={isLoading}
+            />
+            <div className="tooltip-container">
+              <button 
+                className="send-button"
+                onClick={handleSend} 
+                disabled={isLoading}
+              >
+                ↑
+              </button>
+              <div className="tooltip">Send message</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Collapsed state - just input bar with expand button */}
+      {hasMessages && !isMinimized && isCollapsed && (
+        <div className="chat-input-container collapsed">
+          <div className="tooltip-container">
+            <button
+              className="expand-button"
+              onClick={() => setIsCollapsed(false)}
+            >
+              ⌄
+            </button>
+            <div className="tooltip">Expand conversation</div>
+          </div>
+          <input
+            type="text"
+            className="chat-input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Message AI Assistant..."
+            disabled={isLoading}
+          />
+          <div className="tooltip-container">
+            <button 
+              className="send-button"
+              onClick={handleSend} 
+              disabled={isLoading}
+            >
+              ↑
+            </button>
+            <div className="tooltip">Send message</div>
+          </div>
+        </div>
+      )}
+
+      {/* Standalone input when not expanded */}
+      {!hasMessages && !isMinimized && (
+        <div className="chat-input-container">
+          <input
+            type="text"
+            className="chat-input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Ask me about your data..."
+            disabled={isLoading}
+          />
+          <div className="tooltip-container">
+            <button 
+              className="send-button"
+              onClick={handleSend} 
+              disabled={isLoading}
+            >
+              ↑
+            </button>
+            <div className="tooltip">Send message</div>
+          </div>
+        </div>
+      )}
+
+      {/* Ingestion modal */}
       {showModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          background: 'rgba(0,0,0,0.3)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{ background: 'white', padding: 30, borderRadius: 10, minWidth: 320, boxShadow: '0 2px 12px rgba(0,0,0,0.2)' }}>
+        <div className="modal-overlay">
+          <div className="modal-content">
             <h3>Ingest a new URL</h3>
             <input
               type="text"
+              className="modal-input"
               value={ingestUrl}
               onChange={e => setIngestUrl(e.target.value)}
-              placeholder="Enter URL to ingest"
-              style={{ width: '100%', padding: 8, marginBottom: 10, borderRadius: 4, border: '1px solid #ccc' }}
+              placeholder="Enter URL to ingest (e.g., https://example.com)"
               disabled={ingestStatus === 'loading'}
             />
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div className="modal-buttons">
               <button
-                onClick={handleIngest}
-                disabled={ingestStatus === 'loading' || !ingestUrl.trim()}
-                style={{ padding: '8px 16px', borderRadius: 4, border: 'none', background: '#007bff', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                {ingestStatus === 'loading' ? 'Ingesting...' : 'Submit'}
-              </button>
-              <button
+                className="modal-button secondary"
                 onClick={() => { setShowModal(false); setIngestUrl(''); setIngestStatus(null); }}
-                style={{ padding: '8px 16px', borderRadius: 4, border: 'none', background: '#ccc', color: '#333', fontWeight: 'bold', cursor: 'pointer' }}
                 disabled={ingestStatus === 'loading'}
               >
                 Cancel
               </button>
+              <button
+                className="modal-button primary"
+                onClick={handleIngest}
+                disabled={ingestStatus === 'loading' || !ingestUrl.trim()}
+              >
+                {ingestStatus === 'loading' ? 'Ingesting...' : 'Submit'}
+              </button>
             </div>
-            {ingestStatus === 'success' && <div style={{ color: 'green', marginTop: 10 }}>URL ingested successfully!</div>}
-            {ingestStatus === 'error' && <div style={{ color: 'red', marginTop: 10 }}>Failed to ingest URL. Please try again.</div>}
+            {ingestStatus === 'success' && (
+              <div className="modal-status success">URL ingested successfully!</div>
+            )}
+            {ingestStatus === 'error' && (
+              <div className="modal-status error">Failed to ingest URL. Please try again.</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Ingestion loader overlay */}
+      {isIngesting && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div style={{ textAlign: 'center' }}>
+              <div className="spinner" />
+              <div style={{ color: '#007bff', fontWeight: 'bold', fontSize: '1.1rem' }}>Ingesting...</div>
+            </div>
           </div>
         </div>
       )}
