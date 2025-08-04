@@ -4,7 +4,7 @@ import './ChatWidget.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
 
-const ChatWidget = () => {
+const ChatWidget = ({ baseUrl, appName }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -40,6 +40,7 @@ const ChatWidget = () => {
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
+      console.error(error);
       const errorMessage = {
         sender: 'bot',
         text: 'Sorry, something went wrong. Please try again.',
