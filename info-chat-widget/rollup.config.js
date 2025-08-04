@@ -6,6 +6,7 @@ import postcss from 'rollup-plugin-postcss';
 import replace from '@rollup/plugin-replace';
 import json from '@rollup/plugin-json';
 import polyfillNode from 'rollup-plugin-polyfill-node';
+import serve from 'rollup-plugin-serve';
 
 export default {
   input: 'src/index.js',
@@ -39,5 +40,9 @@ export default {
       extensions: ['.js', '.jsx']
     }),
     terser(),
+    // serve({
+    //   contentBase: 'dist',
+    //   port: 4000
+    // }),
   ],
 }; 
