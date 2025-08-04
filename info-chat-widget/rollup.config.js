@@ -40,10 +40,9 @@ export default {
       extensions: ['.js', '.jsx']
     }),
     terser(),
-    serve({
-      contentBase: 'dist',
-      port: 4000
-    }),
-    
+    // serve({
+    //   contentBase: 'dist',
+    //   port: 4000
+    // }),
   ],
 }; 
