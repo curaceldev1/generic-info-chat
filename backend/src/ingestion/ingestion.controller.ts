@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode } from '@nestjs/common';
 import { IngestionService } from './ingestion.service';
 import { IngestDto } from './dto/ingest.dto';
 
@@ -7,8 +7,10 @@ export class IngestionController {
   constructor(private readonly ingestionService: IngestionService) {}
 
   @Post()
+  @HttpCode(202)
   async ingest(@Body() ingestDto: IngestDto) {
     const { url, appName } = ingestDto;
-    return this.ingestionService.crawlUrl(url, appName);
+    const job = await this.ingestionService.enqueueCrawl(url, appName);
+    return { message: 'Ingestion started', status: 'queued', jobId: job.id };
   }
 }
