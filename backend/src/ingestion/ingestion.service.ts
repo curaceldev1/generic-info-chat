@@ -7,10 +7,12 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import Crawl4AI from 'crawl4ai';
 
 @Injectable()
 export class IngestionService implements OnModuleInit {
   private firecrawl: FirecrawlApp;
+  private crawl4ai?: Crawl4AI;
 
   constructor(
     private configService: ConfigService,
@@ -19,11 +21,21 @@ export class IngestionService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    const apiKey = this.configService.get<string>('FIRECRAWL_API_KEY');
-    if (!apiKey) {
-      throw new Error('Firecrawl API key is not configured. Please set FIRECRAWL_API_KEY in your environment.');
+    const firecrawlApiKey = this.configService.get<string>('FIRECRAWL_API_KEY');
+    if (firecrawlApiKey) {
+      this.firecrawl = new FirecrawlApp({ apiKey: firecrawlApiKey });
     }
-    this.firecrawl = new FirecrawlApp({ apiKey });
+
+    const crawl4aiBase = this.configService.get<string>('CRAWL4AI_BASE_URL') || process.env.CRAWL4AI_BASE_URL;
+    const crawl4aiToken = this.configService.get<string>('CRAWL4AI_API_TOKEN') || process.env.CRAWL4AI_API_TOKEN;
+    if (crawl4aiBase) {
+      this.crawl4ai = new Crawl4AI({
+        baseUrl: crawl4aiBase,
+        apiToken: crawl4aiToken,
+        timeout: 60000,
+        debug: true,
+      });
+    }
   }
 
   async enqueueCrawl(url: string, appName: string) {
@@ -72,37 +84,23 @@ export class IngestionService implements OnModuleInit {
   }
 
   private async crawlWithCrawl4AIUsingLLM(url: string, appName: string): Promise<{ data: Array<{ markdown?: string; metadata?: { sourceURL?: string } }> } | null> {
-    const baseUrl = this.configService.get<string>('CRAWL4AI_BASE_URL') || process.env.CRAWL4AI_BASE_URL;
-    if (!baseUrl) return null;
+    if (!this.crawl4ai) return null;
 
     const prompt = `Extract information that is most relevant for a Q&A assistant about ${appName}.`;
-    const endpoint = `${baseUrl}/md`;
 
     try {
-      const payload = {
+      const markdown = await this.crawl4ai.markdown({
         url,
-        f: 'llm',
-        q: prompt,
-        c: '0',
-      };
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      } as RequestInit);
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(`Crawl4AI LLM request failed (${res.status}): ${text}`);
-      }
-      const json = await res.json();
-      console.log('Crawl4AI LLM response:', json);
+        filter: 'llm',
+        query: prompt,
+      });
 
-      if (json && typeof json === 'object' && json.markdown) {
-        return { data: [{ markdown: json.markdown, metadata: { sourceURL: url } }] };
+      if (typeof markdown === 'string' && markdown.trim().length > 0) {
+        return { data: [{ markdown, metadata: { sourceURL: url } }] };
       }
-      throw new Error('Crawl4AI LLM response missing expected markdown content');
+      throw new Error('Crawl4AI markdown() returned empty content');
     } catch (err) {
-      console.error('Error calling Crawl4AI LLM service:', err);
+      console.error('Error calling Crawl4AI markdown LLM:', err);
       throw err;
     }
   }
