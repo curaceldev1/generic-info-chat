@@ -8,6 +8,7 @@ import { Queue } from 'bull';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import Crawl4AI from 'crawl4ai';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class IngestionService implements OnModuleInit {
@@ -46,6 +47,107 @@ export class IngestionService implements OnModuleInit {
     );
   }
 
+  /**
+   * Attempt to resolve a root/base URL from an arbitrary page URL.
+   */
+  private getSiteRoot(input: string): string | null {
+    try {
+      const u = new URL(input);
+      u.pathname = '/';
+      u.search = '';
+      u.hash = '';
+      return u.toString().replace(/\/$/, '');
+    } catch {
+      return null;
+    }
+  }
+
+  private async safeFetch(url: string, timeoutMs = 10000): Promise<string | null> {
+    try {
+      const controller = new AbortController();
+      const to = setTimeout(() => controller.abort(), timeoutMs);
+      const res = await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'CuracelIngestionBot/1.0' } });
+      clearTimeout(to);
+      if (!res.ok) return null;
+      if ((res.headers.get('content-type') || '').includes('text') || (res.headers.get('content-type') || '').includes('xml')) {
+        return await res.text();
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  private parseSitemap(xml: string): string[] {
+    // Super light-weight XML parsing via regex; sufficient for urlset / sitemapindex
+    const urls: string[] = [];
+    const locRegex = /<loc>([^<]+)<\/loc>/gi;
+    let match: RegExpExecArray | null;
+    while ((match = locRegex.exec(xml))) {
+      const url = match[1].trim();
+      if (url.startsWith('http')) urls.push(url);
+    }
+    return urls;
+  }
+
+  private dedupeAndLimit(urls: string[], max: number): string[] {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const u of urls) {
+      if (!seen.has(u)) {
+        seen.add(u);
+        out.push(u);
+        if (out.length >= max) break;
+      }
+    }
+    return out;
+  }
+
+  private async discoverSitemapUrls(seedUrl: string): Promise<string[] | null> {
+    const root = this.getSiteRoot(seedUrl);
+    if (!root) return null;
+    const candidates = [
+      `${root}/sitemap.xml`,
+      `${root}/sitemap_index.xml`,
+      `${root}/sitemap-index.xml`,
+    ];
+    // Attempt robots.txt for additional sitemap declarations
+    const robotsTxt = await this.safeFetch(`${root}/robots.txt`);
+    if (robotsTxt) {
+      const lines = robotsTxt.split(/\r?\n/);
+      for (const line of lines) {
+        const m = line.match(/^sitemap:\s*(.+)$/i);
+        if (m && m[1]) candidates.push(m[1].trim());
+      }
+    }
+    const discovered: string[] = [];
+    const visitedSitemaps = new Set<string>();
+    const maxNested = 5;
+    const enqueue = (u: string) => {
+      try { const nu = new URL(u).toString(); if (!visitedSitemaps.has(nu)) candidates.push(nu); } catch { /* noop */ }
+    };
+    while (candidates.length && visitedSitemaps.size < maxNested) {
+      const sm = candidates.shift();
+      if (!sm || visitedSitemaps.has(sm)) continue;
+      visitedSitemaps.add(sm);
+      const xml = await this.safeFetch(sm, 12000);
+      if (!xml) continue;
+      const urls = this.parseSitemap(xml);
+      if (urls.length === 0) continue;
+      // Heuristic: if many <loc> entries end with .xml treat as sitemapindex
+      const xmlChildren = urls.filter(u => u.toLowerCase().endsWith('.xml'));
+      if (xmlChildren.length && xmlChildren.length >= urls.length * 0.5) {
+        xmlChildren.forEach(enqueue);
+      } else {
+        discovered.push(...urls.filter(u => !u.toLowerCase().endsWith('.xml')));
+      }
+    }
+    const maxUrls = Number(this.configService.get<string>('SITEMAP_MAX_URLS') || process.env.SITEMAP_MAX_URLS || 100);
+    const final = this.dedupeAndLimit(discovered, maxUrls);
+    if (final.length === 0) return null;
+    return final;
+  }
+
   private async processPages(
     pages: Array<{ markdown?: string; metadata?: { sourceURL?: string } }>,
     appName: string,
@@ -73,32 +175,41 @@ export class IngestionService implements OnModuleInit {
     return { totalChunks, totalFailed, pageCount };
   }
 
-  // Removed non-LLM crawl method; LLM is the default when Crawl4AI is configured
-
-  private formatPrompt(template: string, variables: Record<string, string>): string {
-    let output = template;
-    for (const [key, value] of Object.entries(variables)) {
-      output = output.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
-    }
-    return output;
-  }
-
   private async crawlWithCrawl4AIUsingLLM(url: string, appName: string): Promise<{ data: Array<{ markdown?: string; metadata?: { sourceURL?: string } }> } | null> {
     if (!this.crawl4ai) return null;
 
     const prompt = `Extract information that is most relevant for a Q&A assistant about ${appName}.`;
 
     try {
-      const markdown = await this.crawl4ai.markdown({
-        url,
-        filter: 'llm',
-        query: prompt,
-      });
+      // Try sitemap-driven multi-page extraction first
+      const sitemapUrls = await this.discoverSitemapUrls(url);
+      if (sitemapUrls && sitemapUrls.length) {
+        console.log(`Discovered sitemap with ${sitemapUrls.length} URLs. Beginning multi-page Crawl4AI extraction (LLM filter).`);
+        const pages: Array<{ markdown: string; metadata: { sourceURL: string } }> = [];
+        const maxPerSite = Number(this.configService.get<string>('SITEMAP_MAX_URLS') || process.env.SITEMAP_MAX_URLS || 100);
+        for (const pageUrl of sitemapUrls.slice(0, maxPerSite)) {
+          try {
+            const markdown = await this.crawl4ai.markdown({ url: pageUrl, filter: 'llm', query: prompt });
+            if (typeof markdown === 'string' && markdown.trim()) {
+              pages.push({ markdown, metadata: { sourceURL: pageUrl } });
+            }
+          } catch (pageErr) {
+            console.warn(`Crawl4AI failed for ${pageUrl}:`, (pageErr as any)?.message || pageErr);
+          }
+        }
+        if (pages.length) {
+          return { data: pages };
+        } else {
+          console.warn('Sitemap discovered but no pages yielded markdown. Falling back to single URL.');
+        }
+      }
 
+      // Single URL fallback (current behaviour)
+      const markdown = await this.crawl4ai.markdown({ url, filter: 'llm', query: prompt });
       if (typeof markdown === 'string' && markdown.trim().length > 0) {
         return { data: [{ markdown, metadata: { sourceURL: url } }] };
       }
-      throw new Error('Crawl4AI markdown() returned empty content');
+      throw new Error('Crawl4AI markdown() returned empty content after sitemap fallback');
     } catch (err) {
       console.error('Error calling Crawl4AI markdown LLM:', err);
       throw err;
