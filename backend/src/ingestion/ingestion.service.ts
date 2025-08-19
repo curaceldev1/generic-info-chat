@@ -151,21 +151,33 @@ export class IngestionService implements OnModuleInit {
   private async processPages(
     pages: Array<{ markdown?: string; metadata?: { sourceURL?: string } }>,
     appName: string,
+    options?: { dedupe?: Set<string> },
   ): Promise<{ totalChunks: number; totalFailed: number; pageCount: number }> {
     let totalChunks = 0;
     let totalFailed = 0;
     let pageCount = 0;
     for (const page of pages) {
       if (page.markdown && page.metadata && page.metadata.sourceURL) {
+        const normalized = this.normalizeMarkdown(page.markdown, page.metadata.sourceURL);
+        const hash = this.hashContent(normalized);
+        if (options?.dedupe) {
+          if (options.dedupe.has(hash)) {
+            // Skip exact duplicate page content
+            continue;
+          }
+          options.dedupe.add(hash);
+        }
         const splitter = new MarkdownTextSplitter({
           chunkSize: 10000,
           chunkOverlap: 200,
         });
-        const chunks = await splitter.splitText(page.markdown);
+        const chunks = await splitter.splitText(normalized);
+        // In-chunk level normalization / cleanup
+        const cleanedChunks = chunks.map(c => this.normalizeChunk(c));
         const { processed, failed } = await this.typesenseService.generateAndStoreEmbedding(
           appName,
           page.metadata.sourceURL,
-          chunks,
+          cleanedChunks,
         );
         totalChunks += processed;
         totalFailed += failed;
@@ -292,7 +304,7 @@ export class IngestionService implements OnModuleInit {
         try {
           const resultLlm = await this.crawlWithCrawl4AIUsingLLM(url, appName);
           if (resultLlm) {
-            const { totalChunks, totalFailed, pageCount } = await this.processPages(resultLlm.data, appName);
+            const { totalChunks, totalFailed, pageCount } = await this.processPages(resultLlm.data, appName, { dedupe: new Set() });
             if (totalFailed > 0) {
               throw new Error(
                 `Ingestion partially failed: ${totalFailed} chunks failed, ${totalChunks} chunks indexed from ${pageCount} pages under ${url}.`,
@@ -314,7 +326,7 @@ export class IngestionService implements OnModuleInit {
       });
 
       if (result && typeof result === 'object' && 'data' in result && Array.isArray((result as any).data)) {
-        const { totalChunks, totalFailed } = await this.processPages((result as any).data, appName);
+        const { totalChunks, totalFailed } = await this.processPages((result as any).data, appName, { dedupe: new Set() });
         if (totalFailed > 0) {
           throw new Error(
             `Ingestion partially failed: ${totalFailed} chunks failed, ${totalChunks} chunks indexed from ${(result as any).data.length} pages under ${url}.`,
@@ -336,5 +348,68 @@ export class IngestionService implements OnModuleInit {
       console.error('Error crawling URL:', error);
       throw error;
     }
+  }
+
+  /* --------------------------- Normalization Helpers --------------------------- */
+
+  private hashContent(content: string): string {
+    return crypto.createHash('sha256').update(content).digest('hex');
+  }
+
+  private normalizeMarkdown(raw: string, sourceURL?: string): string {
+    let text = raw || '';
+    // Remove UTF-8 BOM
+    text = text.replace(/^\uFEFF/, '');
+    // Remove frontmatter
+    text = text.replace(/^---[\s\S]*?---\n/, '');
+    // Remove HTML comments
+    text = text.replace(/<!--([\s\S]*?)-->/g, '');
+    // Remove scripts/styles blocks if any
+    text = text.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '');
+    // Collapse multiple blank lines
+    text = text.replace(/\n{3,}/g, '\n\n');
+    // Remove leading/trailing whitespace on each line
+    text = text.split('\n').map(l => l.trimEnd()).join('\n');
+    // Remove markdown image tags but keep alt text where available
+    text = text.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1');
+    // Strip tracking params from links (utm_*, ref, fbclid)
+    text = text.replace(/\]\((https?:[^)]+)\)/g, (m, p1) => {
+      try {
+        const u = new URL(p1);
+        const paramsToDelete: string[] = [];
+        u.searchParams.forEach((_, k) => { if (/^(utm_|ref$|fbclid$)/i.test(k)) paramsToDelete.push(k); });
+        paramsToDelete.forEach(k => u.searchParams.delete(k));
+        return `](${u.toString().replace(/\/$/, '')})`;
+      } catch { return m; }
+    });
+    // Deduplicate consecutive identical lines
+    const lines = text.split('\n');
+    const deduped: string[] = [];
+    let prev = '';
+    for (const l of lines) {
+      if (l !== prev) deduped.push(l);
+      prev = l;
+    }
+    text = deduped.join('\n');
+    // Heuristic remove common boilerplate lines
+    const boilerplatePatterns = [
+      /copyright\s+\d{4}/i,
+      /all rights reserved/i,
+      /cookie( |-)policy/i,
+      /terms of service/i,
+      /privacy policy/i,
+    ];
+    text = text.split('\n').filter(l => !boilerplatePatterns.some(p => p.test(l))).join('\n');
+    text = text.trim();
+    return text;
+  }
+
+  private normalizeChunk(chunk: string): string {
+    let c = chunk;
+    // Collapse excessive whitespace inside chunk
+    c = c.replace(/\s{2,}/g, ' ');
+    // Ensure headings start on new line
+    c = c.replace(/\s*^#+\s+/gm, m => m.trimStart());
+    return c.trim();
   }
 }
