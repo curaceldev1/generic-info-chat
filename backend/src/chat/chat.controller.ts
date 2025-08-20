@@ -13,9 +13,10 @@ export class ChatController {
   async chat(@Body() chatDto: ChatDto) {
     const { message, appName, baseUrl, history } = chatDto;
     const requestId = randomUUID();
+    const trace = requestId.slice(0, 4);
 
     this.logger.log(
-      `request.start requestId=${requestId} appName=${appName} baseUrl=${baseUrl ?? 'n/a'} messageChars=${message?.length ?? 0} historyLen=${history?.length ?? 0}`,
+      `Received chat for app '${appName}' (baseUrl: ${baseUrl ?? 'n/a'}). Message: '${message}'. History: ${history?.length ?? 0}. [trace ${trace}]`,
     );
 
     try {
@@ -26,10 +27,13 @@ export class ChatController {
         history,
         requestId,
       );
-      this.logger.log(`request.end requestId=${requestId}`);
+      this.logger.log(`Chat completed successfully. [trace ${trace}]`);
       return result;
     } catch (error) {
-      this.logger.error(`request.error requestId=${requestId}`, error as any);
+      this.logger.error(
+        `Chat failed: ${(error as any)?.message ?? error}. [trace ${trace}]`,
+        error as any,
+      );
       throw error;
     }
   }

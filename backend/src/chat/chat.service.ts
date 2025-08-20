@@ -43,33 +43,32 @@ export class ChatService implements OnModuleInit {
         .join('\n')
         .slice(-SAFE_CHAR_LIMIT);
 
+      const trace = requestId ? requestId.slice(0, 4) : '----';
       const embedStart = Date.now();
-      this.logger.log(`embed.start requestId=${requestId}`);
+      this.logger.log(`Creating conversation embedding… [trace ${trace}]`);
       const queryEmbedding = await this.openai.embeddings.create({
         model: 'text-embedding-3-small',
         input: conversationForEmbedding,
       });
-      this.logger.log(`embed.end requestId=${requestId} ms=${Date.now() - embedStart}`);
+      this.logger.log(`Embedding created in ${Date.now() - embedStart}ms. [trace ${trace}]`);
 
       // 2. Search for relevant documents in Typesense
       const searchStart = Date.now();
-      this.logger.log(`search.start requestId=${requestId} collection=${appName}`);
+      this.logger.log(`Searching Typesense collection '${appName}'… [trace ${trace}]`);
       const searchResults = await this.typesenseService.search(
         appName,
         queryEmbedding.data[0].embedding,
         baseUrl,
         requestId,
       );
-      this.logger.log(
-        `search.end requestId=${requestId} ms=${Date.now() - searchStart} hits=${searchResults?.length ?? 0}`,
-      );
+      this.logger.log(`Search returned ${searchResults?.length ?? 0} results in ${Date.now() - searchStart}ms. [trace ${trace}]`);
 
       // 3. Construct the context for the prompt
       const context = searchResults
         .map((result) => result.document.text)
         .join('\n\n')
         .slice(-SAFE_CHAR_LIMIT);
-      this.logger.log(`context.built requestId=${requestId} chars=${context.length}`);
+      this.logger.log(`Built prompt context. [trace ${trace}]`);
 
       // 4. Build chat messages with system + prior history (raw text only) + current question
       const systemContent =
@@ -84,12 +83,12 @@ export class ChatService implements OnModuleInit {
 
       // 5. Generate a response using the chat completion API
       const llmStart = Date.now();
-      this.logger.log(`llm.start requestId=${requestId} model=gpt-4o-mini`);
+      this.logger.log(`Asking LLM (gpt-4o-mini)… [trace ${trace}]`);
       const response = await this.openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages,
       });
-      this.logger.log(`llm.end requestId=${requestId} ms=${Date.now() - llmStart}`);
+      this.logger.log(`LLM responded in ${Date.now() - llmStart}ms. [trace ${trace}]`);
 
       const markdownResponse = response.choices[0].message.content;
       if (!markdownResponse) {
@@ -102,12 +101,11 @@ export class ChatService implements OnModuleInit {
         answerRaw: markdownResponse,
         sources: searchResults.map((result: any) => result.document.source),
       };
-      this.logger.log(
-        `response.ready requestId=${requestId} sources=${(result.sources as any[])?.length ?? 0} answerChars=${markdownResponse.length}`,
-      );
+      this.logger.log(`Returning ${(result.sources as any[])?.length ?? 0} sources. [trace ${trace}]`);
       return result;
     } catch (error) {
-      this.logger.error(`ask.error requestId=${requestId}`, error as any);
+      const trace = requestId ? requestId.slice(0, 4) : '----';
+      this.logger.error(`Could not complete chat: ${(error as any)?.message ?? error}. [trace ${trace}]`, error as any);
       throw error;
     }
   }

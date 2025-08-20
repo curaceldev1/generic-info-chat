@@ -154,7 +154,8 @@ export class TypesenseService implements OnModuleInit {
 
   async search(collectionName: string, queryVector: number[], baseUrl?: string, requestId?: string) {
     const start = Date.now();
-    this.logger.log(`search.start requestId=${requestId} collection=${collectionName}`);
+    const trace = requestId ? requestId.slice(0, 4) : '----';
+    this.logger.log(`Searching Typesense in '${collectionName}' with vector query… [trace ${trace}]`);
     await this.ensureCollectionExists(collectionName);
     const searchRequests = {
       searches: [
@@ -177,7 +178,7 @@ export class TypesenseService implements OnModuleInit {
       commonSearchParams,
     );
     const hits = (searchResult.results[0] as any)?.hits || [];
-    this.logger.log(`search.end requestId=${requestId} collection=${collectionName} ms=${Date.now() - start} hits=${hits.length}`);
+    this.logger.log(`Typesense search finished with ${hits.length} hits in ${Date.now() - start}ms. [trace ${trace}]`);
     return hits;
   }
 }
