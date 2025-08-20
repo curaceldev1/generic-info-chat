@@ -172,9 +172,9 @@ export class TypesenseService implements OnModuleInit {
       per_page: 5,
     };
 
-    if (baseUrl) {
-      commonSearchParams.filter_by = `source:=${baseUrl}`;
-    }
+    // if (baseUrl) {
+    //   commonSearchParams.filter_by = `source:=${baseUrl}`;
+    // }
 
     const searchResult = await this.client.multiSearch.perform(
       searchRequests,
