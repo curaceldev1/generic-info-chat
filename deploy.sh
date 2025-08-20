@@ -69,6 +69,38 @@ check_prerequisites() {
         sudo apt update && sudo apt install -y git
     fi
     
+    # Check if Redis is installed
+    if ! command -v redis-server &> /dev/null; then
+        warning "Redis is not installed. Installing Redis..."
+        # Try official Redis APT repo first (docs: packages.redis.io)
+        sudo apt-get update -y || true
+        sudo apt-get install -y lsb-release curl gpg || true
+        if [ ! -f /usr/share/keyrings/redis-archive-keyring.gpg ]; then
+            curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg || true
+            sudo chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg || true
+            echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list >/dev/null || true
+            sudo apt-get update -y || true
+        fi
+        # Install redis package (fallback to Ubuntu's redis-server if needed)
+        sudo apt-get install -y redis || sudo apt-get install -y redis-server redis-tools
+        
+        # Ensure service is enabled and started (docs recommend enabling on boot)
+        sudo systemctl enable redis-server || true
+        sudo systemctl start redis-server || true
+        
+        # Optional quick connectivity check
+        if command -v redis-cli &> /dev/null; then
+            redis-cli ping >/dev/null 2>&1 || warning "redis-cli ping failed (service may still be starting)"
+        fi
+    else
+        REDIS_VERSION=$(redis-server --version | awk '{print $3}')
+        log "Redis is installed: $REDIS_VERSION"
+        # Make sure service is running
+        if ! systemctl is-active --quiet redis-server; then
+            sudo systemctl start redis-server || true
+        fi
+    fi
+    
     success "Prerequisites check completed"
 }
 
