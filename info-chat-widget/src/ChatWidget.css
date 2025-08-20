@@ -436,7 +436,7 @@ body {
   border: 1px solid rgba(102, 126, 234, 0.1);
 }
 
-.message.bot::before {
+/* .message.bot::before {
   content: "🤖";
   position: absolute;
   left: -25px;
@@ -444,7 +444,7 @@ body {
   font-size: 1rem;
   color: #667eea;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-}
+} */
 
 .message.bot .sources {
   margin-top: 12px;
