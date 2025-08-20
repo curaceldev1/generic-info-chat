@@ -134,7 +134,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
                 </button>
                 <div className="tooltip">Minimize to floating button</div>
               </div>
-              <div className="tooltip-container">
+              {/* <div className="tooltip-container">
                 <button
                   className="header-button"
                   onClick={() => { setShowModal(true); setIngestStatus(null); }}
@@ -142,7 +142,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
                   +
                 </button>
                 <div className="tooltip">Ingest a new URL</div>
-              </div>
+              </div> */}
               <div className="tooltip-container">
                 <button
                   className="header-button"
