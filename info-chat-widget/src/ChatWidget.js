@@ -115,7 +115,6 @@ const ChatWidget = ({ baseUrl, appName }) => {
       {hasMessages && !isMinimized && !isCollapsed && (
         <div className={`chat-conversation ${hasMessages ? 'visible' : ''}`}>
           <div className="chat-header">
-            <h2>AI Assistant</h2>
             <div className="chat-header-actions">
               <div className="tooltip-container">
                 <button
@@ -212,7 +211,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Message AI Assistant..."
+              placeholder="Chat with Our Site"
               disabled={isLoading}
             />
             <div className="tooltip-container">
@@ -247,7 +246,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Message AI Assistant..."
+            placeholder="Chat with Our Site"
             disabled={isLoading}
           />
           <div className="tooltip-container">
