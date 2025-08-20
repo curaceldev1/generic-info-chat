@@ -272,7 +272,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask me about your data..."
+            placeholder="Chat with our site..."
             disabled={isLoading}
           />
           <div className="tooltip-container">
