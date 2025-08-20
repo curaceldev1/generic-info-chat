@@ -124,7 +124,9 @@ export class TypesenseService implements OnModuleInit {
     collectionName: string,
     source: string,
     chunks: string[],
-  ): Promise<void> {
+  ): Promise<{ processed: number; failed: number }> {
+    let processed = 0;
+    let failed = 0;
     for (const chunk of chunks) {
       try {
         console.log('Generating embedding for chunk:', chunk);
@@ -135,6 +137,7 @@ export class TypesenseService implements OnModuleInit {
 
         const embedding = response.data[0].embedding;
         await this.indexDocument(collectionName, source, chunk, embedding);
+        processed += 1;
       } catch (error) {
         console.error(`Error processing chunk for collection '${collectionName}':`, error);
         
@@ -142,11 +145,10 @@ export class TypesenseService implements OnModuleInit {
         if (error.message?.includes('Collection not found') || error.toString().includes('Collection not found')) {
           console.error(`Collection '${collectionName}' was not found and could not be created automatically.`);
         }
-        
-        // Don't throw here to continue processing other chunks
-        // throw error; // Uncomment if you want to stop on first error
+        failed += 1;
       }
     }
+    return { processed, failed };
   }
 
   async search(collectionName: string, queryVector: number[], baseUrl?: string) {

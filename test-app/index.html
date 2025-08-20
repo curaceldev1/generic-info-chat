@@ -28,15 +28,15 @@
   <div id="chat-container"></div>
   <div id="error-log"></div>
 
-  <script src="https://random.crl.to/widget/info-chat-widget.js"></script>
-  <!-- <script src="http://localhost:4000/info-chat-widget.js"></script> -->
+  <!-- <script src="https://random.crl.to/widget/info-chat-widget.js"></script> -->
+  <script src="http://localhost:4000/info-chat-widget.js"></script>
   <script>
     try {
       if (window.InfoChatWidget && typeof window.InfoChatWidget.init === 'function') {
         InfoChatWidget.init({
           containerId: 'chat-container',
           baseUrl: 'https://www.curacel.co/',
-          appName: 'curacel'
+          appName: 'curacel-website'
         });
       } else {
         throw new Error('InfoChatWidget is not available. Check the script path and build process.');

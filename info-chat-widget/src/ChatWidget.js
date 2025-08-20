@@ -18,6 +18,14 @@ const ChatWidget = ({ baseUrl, appName }) => {
   // Loader is active if either ingestion is loading (modal or retry)
   const isIngesting = ingestStatus === 'loading' || retryStatus === 'loading';
 
+  const HISTORY_LIMIT = 10;
+
+  function stripHtml(html) {
+    const el = document.createElement('div');
+    el.innerHTML = html;
+    return el.textContent || el.innerText || '';
+  }
+
   const handleSend = async () => {
     if (input.trim() === '') return;
 
@@ -27,15 +35,22 @@ const ChatWidget = ({ baseUrl, appName }) => {
     setIsLoading(true);
 
     try {
+      const history = messages.slice(-HISTORY_LIMIT).map((m) => ({
+        role: m.sender === 'bot' ? 'assistant' : 'user',
+        content: m.sender === 'bot' ? (m.raw ? m.raw : stripHtml(m.text)) : m.text,
+      }));
+
       const response = await axios.post(`${BACKEND_URL}/chat`, {
         message: input,
         baseUrl: baseUrl,
         appName: appName,
+        history,
       });
 
       const botMessage = {
         sender: 'bot',
         text: response.data.answer,
+        raw: response.data.answerRaw || stripHtml(response.data.answer),
         sources: response.data.sources,
       };
       setMessages((prev) => [...prev, botMessage]);
