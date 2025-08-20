@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client as TypesenseClient } from 'typesense';
 import OpenAI from 'openai';
@@ -10,6 +10,7 @@ import { SearchParams } from 'typesense/lib/Typesense/Documents';
 export class TypesenseService implements OnModuleInit {
   private client: TypesenseClient;
   private openai: OpenAI;
+  private readonly logger = new Logger(TypesenseService.name);
 
   constructor(private configService: ConfigService) {}
 
@@ -60,7 +61,7 @@ export class TypesenseService implements OnModuleInit {
         error.message?.includes('Collection not found') ||
         error.toString().includes('Collection not found')
       ) {
-        console.log(`Collection '${collectionName}' not found. Creating it...`);
+        this.logger.warn(`collection.missing name=${collectionName} action=create`);
         await this.createCollection(collectionName);
       } else {
         throw error;
@@ -81,13 +82,13 @@ export class TypesenseService implements OnModuleInit {
 
     try {
       await this.client.collections().create(schema);
-      console.log(`Successfully created collection '${collectionName}'`);
+      this.logger.log(`collection.created name=${collectionName}`);
     } catch (error) {
-      console.error(`Failed to create collection '${collectionName}':`, error);
+      this.logger.error(`collection.create.error name=${collectionName}`, error as any);
       
       // If collection already exists, that's fine
       if (error.message?.includes('already exists') || error.toString().includes('already exists')) {
-        console.log(`Collection '${collectionName}' already exists, continuing...`);
+        this.logger.log(`collection.exists name=${collectionName}`);
         return;
       }
       
@@ -115,7 +116,7 @@ export class TypesenseService implements OnModuleInit {
         .documents()
         .upsert(document);
     } catch (error) {
-      console.error(`Failed to index document in collection '${collectionName}':`, error);
+      this.logger.error(`index.error collection=${collectionName}`, error as any);
       throw error;
     }
   }
@@ -129,7 +130,7 @@ export class TypesenseService implements OnModuleInit {
     let failed = 0;
     for (const chunk of chunks) {
       try {
-        console.log('Generating embedding for chunk:', chunk);
+        this.logger.log('embed.chunk.start');
         const response = await this.openai.embeddings.create({
           model: 'text-embedding-3-small',
           input: chunk,
@@ -139,11 +140,11 @@ export class TypesenseService implements OnModuleInit {
         await this.indexDocument(collectionName, source, chunk, embedding);
         processed += 1;
       } catch (error) {
-        console.error(`Error processing chunk for collection '${collectionName}':`, error);
+        this.logger.error(`embed.chunk.error collection=${collectionName}`, error as any);
         
         // If it's a collection-related error, try to provide more context
         if (error.message?.includes('Collection not found') || error.toString().includes('Collection not found')) {
-          console.error(`Collection '${collectionName}' was not found and could not be created automatically.`);
+          this.logger.error(`collection.not_found name=${collectionName}`);
         }
         failed += 1;
       }
@@ -151,7 +152,9 @@ export class TypesenseService implements OnModuleInit {
     return { processed, failed };
   }
 
-  async search(collectionName: string, queryVector: number[], baseUrl?: string) {
+  async search(collectionName: string, queryVector: number[], baseUrl?: string, requestId?: string) {
+    const start = Date.now();
+    this.logger.log(`search.start requestId=${requestId} collection=${collectionName}`);
     await this.ensureCollectionExists(collectionName);
     const searchRequests = {
       searches: [
@@ -177,6 +180,8 @@ export class TypesenseService implements OnModuleInit {
       searchRequests,
       commonSearchParams,
     );
-    return (searchResult.results[0] as any)?.hits || [];
+    const hits = (searchResult.results[0] as any)?.hits || [];
+    this.logger.log(`search.end requestId=${requestId} collection=${collectionName} ms=${Date.now() - start} hits=${hits.length}`);
+    return hits;
   }
 }

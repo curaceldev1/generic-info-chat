@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { TypesenseService } from 'src/typesense/typesense.service';
@@ -8,6 +8,7 @@ import * as showdown from 'showdown';
 export class ChatService implements OnModuleInit {
   private openai: OpenAI;
   private converter: showdown.Converter;
+  private readonly logger = new Logger(ChatService.name);
 
   constructor(
     private configService: ConfigService,
@@ -28,6 +29,7 @@ export class ChatService implements OnModuleInit {
     appName: string,
     baseUrl?: string,
     history?: { role: 'user' | 'assistant'; content: string }[],
+    requestId?: string,
   ): Promise<any> {
     try {
       const HISTORY_LIMIT = 10;
@@ -41,16 +43,25 @@ export class ChatService implements OnModuleInit {
         .join('\n')
         .slice(-SAFE_CHAR_LIMIT);
 
+      const embedStart = Date.now();
+      this.logger.log(`embed.start requestId=${requestId}`);
       const queryEmbedding = await this.openai.embeddings.create({
         model: 'text-embedding-3-small',
         input: conversationForEmbedding,
       });
+      this.logger.log(`embed.end requestId=${requestId} ms=${Date.now() - embedStart}`);
 
       // 2. Search for relevant documents in Typesense
+      const searchStart = Date.now();
+      this.logger.log(`search.start requestId=${requestId} collection=${appName}`);
       const searchResults = await this.typesenseService.search(
         appName,
         queryEmbedding.data[0].embedding,
         baseUrl,
+        requestId,
+      );
+      this.logger.log(
+        `search.end requestId=${requestId} ms=${Date.now() - searchStart} hits=${searchResults?.length ?? 0}`,
       );
 
       // 3. Construct the context for the prompt
@@ -58,6 +69,7 @@ export class ChatService implements OnModuleInit {
         .map((result) => result.document.text)
         .join('\n\n')
         .slice(-SAFE_CHAR_LIMIT);
+      this.logger.log(`context.built requestId=${requestId} chars=${context.length}`);
 
       // 4. Build chat messages with system + prior history (raw text only) + current question
       const systemContent =
@@ -71,10 +83,13 @@ export class ChatService implements OnModuleInit {
       ];
 
       // 5. Generate a response using the chat completion API
+      const llmStart = Date.now();
+      this.logger.log(`llm.start requestId=${requestId} model=gpt-4o-mini`);
       const response = await this.openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages,
       });
+      this.logger.log(`llm.end requestId=${requestId} ms=${Date.now() - llmStart}`);
 
       const markdownResponse = response.choices[0].message.content;
       if (!markdownResponse) {
@@ -82,13 +97,17 @@ export class ChatService implements OnModuleInit {
       }
       const htmlResponse = this.converter.makeHtml(markdownResponse);
 
-      return {
+      const result = {
         answer: htmlResponse,
         answerRaw: markdownResponse,
         sources: searchResults.map((result: any) => result.document.source),
       };
+      this.logger.log(
+        `response.ready requestId=${requestId} sources=${(result.sources as any[])?.length ?? 0} answerChars=${markdownResponse.length}`,
+      );
+      return result;
     } catch (error) {
-      console.error('Error in ChatService ask method:', error);
+      this.logger.error(`ask.error requestId=${requestId}`, error as any);
       throw error;
     }
   }
