@@ -162,7 +162,7 @@ export class TypesenseService implements OnModuleInit {
         {
           collection: collectionName,
           q: '*',
-          vector_query: `embedding:([${queryVector.join(',')}], k: 20)`,
+          vector_query: `embedding:([${queryVector.join(',')}], k: 5)`,
         },
       ],
     };
@@ -170,7 +170,7 @@ export class TypesenseService implements OnModuleInit {
     const commonSearchParams: SearchParams = {
       query_by: 'embedding',
       include_fields: 'text,source',
-      per_page: 20,
+      per_page: 5,
     };
 
     const searchResult = await this.client.multiSearch.perform(
