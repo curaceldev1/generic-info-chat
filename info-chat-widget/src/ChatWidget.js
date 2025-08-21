@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './ChatWidget.css';
 
@@ -24,6 +24,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showConfirmReingest, setShowConfirmReingest] = useState(false);
+  const lastMessageRef = useRef(null);
 
   // Loader is active if either ingestion is loading (modal or retry)
   const isIngesting = ingestStatus === 'loading' || retryStatus === 'loading';
@@ -55,6 +56,17 @@ const ChatWidget = ({ baseUrl, appName }) => {
       // ignore storage errors
     }
   }, [messages, appName, baseUrl]);
+
+  // Auto-scroll the latest message into view (its beginning) when messages or loading state change
+  useEffect(() => {
+    try {
+      if (lastMessageRef.current) {
+        lastMessageRef.current.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+      }
+    } catch {
+      // ignore scroll errors
+    }
+  }, [messages, isLoading]);
 
   function stripHtml(html) {
     const el = document.createElement('div');
@@ -205,7 +217,11 @@ const ChatWidget = ({ baseUrl, appName }) => {
             )}
             
             {messages.map((msg, index) => (
-              <div key={index} className={`message ${msg.sender}`}>
+              <div
+                key={index}
+                className={`message ${msg.sender}`}
+                ref={index === messages.length - 1 ? lastMessageRef : null}
+              >
                 {msg.sender === 'bot' ? (
                   <div dangerouslySetInnerHTML={{ __html: msg.text }} />
                 ) : (
@@ -237,6 +253,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
                 </div>
               </div>
             )}
+            
           </div>
 
           {/* Input inside conversation */}
