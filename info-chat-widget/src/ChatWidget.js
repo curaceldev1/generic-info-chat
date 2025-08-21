@@ -14,6 +14,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
   const [retryStatus, setRetryStatus] = useState(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showConfirmReingest, setShowConfirmReingest] = useState(false);
 
   // Loader is active if either ingestion is loading (modal or retry)
   const isIngesting = ingestStatus === 'loading' || retryStatus === 'loading';
@@ -146,7 +147,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
               <div className="tooltip-container">
                 <button
                   className="header-button"
-                  onClick={handleRetryIngest}
+                  onClick={() => setShowConfirmReingest(true)}
                   disabled={retryStatus === 'loading'}
                 >
                   ⟳
@@ -333,6 +334,34 @@ const ChatWidget = ({ baseUrl, appName }) => {
             <div style={{ textAlign: 'center' }}>
               <div className="spinner" />
               <div style={{ color: '#007bff', fontWeight: 'bold', fontSize: '1.1rem' }}>Ingesting...</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Reingest Modal */}
+      {showConfirmReingest && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Re-ingest current site?</h3>
+            <p style={{ marginTop: 8 }}>
+              This will clear the existing index for this app and re-crawl from the base URL.
+            </p>
+            <div className="modal-buttons">
+              <button
+                className="modal-button secondary"
+                onClick={() => setShowConfirmReingest(false)}
+                disabled={retryStatus === 'loading'}
+              >
+                Cancel
+              </button>
+              <button
+                className="modal-button primary"
+                onClick={async () => { setShowConfirmReingest(false); await handleRetryIngest(); }}
+                disabled={retryStatus === 'loading'}
+              >
+                {retryStatus === 'loading' ? 'Re-ingesting…' : 'Re-ingest'}
+              </button>
             </div>
           </div>
         </div>
