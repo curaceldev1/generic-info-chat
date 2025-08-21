@@ -1,11 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './ChatWidget.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
 
 const ChatWidget = ({ baseUrl, appName }) => {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => {
+    try {
+      const key = `gic:history:${appName}:${baseUrl || ''}`;
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+      const parsed = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -20,6 +29,32 @@ const ChatWidget = ({ baseUrl, appName }) => {
   const isIngesting = ingestStatus === 'loading' || retryStatus === 'loading';
 
   const HISTORY_LIMIT = 10;
+
+  // Reload messages if the appName/baseUrl changes (e.g., host app switches context)
+  useEffect(() => {
+    try {
+      const key = `gic:history:${appName}:${baseUrl || ''}`;
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed)) setMessages(parsed);
+      else setMessages([]);
+    } catch {
+      setMessages([]);
+    }
+  }, [appName, baseUrl]);
+
+  // Persist messages on change (keep last 200 entries)
+  useEffect(() => {
+    try {
+      const key = `gic:history:${appName}:${baseUrl || ''}`;
+      const toStore = Array.isArray(messages) ? messages.slice(-200) : [];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(key, JSON.stringify(toStore));
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [messages, appName, baseUrl]);
 
   function stripHtml(html) {
     const el = document.createElement('div');
