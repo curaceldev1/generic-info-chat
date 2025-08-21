@@ -538,7 +538,7 @@ body {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
 }
 
-.loading-message::before {
+/* .loading-message::before {
   content: "🤖";
   position: absolute;
   left: -25px;
@@ -546,7 +546,7 @@ body {
   font-size: 1rem;
   color: #667eea;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-}
+} */
 
 .loading-message span {
   color: #1a1a1a;
