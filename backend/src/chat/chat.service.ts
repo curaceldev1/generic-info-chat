@@ -24,6 +24,21 @@ export class ChatService implements OnModuleInit {
     this.converter = new showdown.Converter();
   }
 
+  private getUniqueSourcesFromHits(
+    hits: Array<{ document?: { source?: string } }>,
+  ): string[] {
+    const uniqueSources: string[] = [];
+    const seenSources = new Set<string>();
+    for (const hit of hits) {
+      const src = hit?.document?.source;
+      if (src && !seenSources.has(src)) {
+        seenSources.add(src);
+        uniqueSources.push(src);
+      }
+    }
+    return uniqueSources;
+  }
+
   async ask(
     question: string,
     appName: string,
@@ -97,12 +112,13 @@ export class ChatService implements OnModuleInit {
       }
       const htmlResponse = this.converter.makeHtml(markdownResponse);
 
+      const uniqueSources = this.getUniqueSourcesFromHits(searchResults as any);
       const result = {
         answer: htmlResponse,
         answerRaw: markdownResponse,
-        sources: searchResults.map((result: any) => result.document.source),
+        sources: uniqueSources,
       };
-      this.logger.log(`Returning ${(result.sources as any[])?.length ?? 0} sources. [trace ${trace}]`);
+      this.logger.log(`Returning ${uniqueSources.length} sources. [trace ${trace}]`);
       return result;
     } catch (error) {
       const trace = requestId ? requestId.slice(0, 4) : '----';
