@@ -96,6 +96,51 @@ export class TypesenseService implements OnModuleInit {
     }
   }
 
+  private async hasAnyDocuments(collectionName: string): Promise<boolean> {
+    try {
+      const res = await this.client
+        .collections(collectionName)
+        .documents()
+        .search({ q: '*', query_by: 'text', per_page: 1 });
+      return Array.isArray((res as any).hits) && (res as any).hits.length > 0;
+    } catch (error) {
+      // If search fails because collection is missing, treat as empty
+      if ((error as any)?.httpStatus === 404) return false;
+      throw error;
+    }
+  }
+
+  async resetCollectionIfNotEmpty(collectionName: string): Promise<void> {
+    try {
+      await this.client.collections(collectionName).retrieve();
+    } catch (error) {
+      if (
+        (error as any)?.httpStatus === 404 ||
+        (error as any)?.message?.includes('Collection not found')
+      ) {
+        // Nothing to clear
+        return;
+      }
+      throw error;
+    }
+
+    const hasDocs = await this.hasAnyDocuments(collectionName);
+    if (!hasDocs) {
+      this.logger.log(`Collection '${collectionName}' is already empty. No reset needed.`);
+      return;
+    }
+
+    this.logger.warn(`Clearing existing data in collection '${collectionName}' before re-indexing…`);
+    try {
+      await this.client.collections(collectionName).delete();
+      await this.createCollection(collectionName);
+      this.logger.log(`Collection '${collectionName}' cleared and recreated.`);
+    } catch (error) {
+      this.logger.error(`Failed to reset collection '${collectionName}'.`, error as any);
+      throw error;
+    }
+  }
+
   async indexDocument(
     collectionName: string,
     source: string,

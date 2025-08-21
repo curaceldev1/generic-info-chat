@@ -153,6 +153,8 @@ export class IngestionService implements OnModuleInit {
     appName: string,
     options?: { dedupe?: Set<string> },
   ): Promise<{ totalChunks: number; totalFailed: number; pageCount: number }> {
+    // Ensure collection is emptied before a new indexing session for this app
+    await this.typesenseService.resetCollectionIfNotEmpty(appName);
     let totalChunks = 0;
     let totalFailed = 0;
     let pageCount = 0;

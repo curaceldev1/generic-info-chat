@@ -72,7 +72,8 @@ export class ChatService implements OnModuleInit {
 
       // 4. Build chat messages with system + prior history (raw text only) + current question
       const systemContent =
-        `You are a helpful AI assistant. Use ONLY the following retrieved context to answer. ` +
+        `You are a helpful AI assistant for ${appName}. Use ONLY the following retrieved context to answer. ` +
+        `You are a critical part of the ${appName} team. You must answer in first person and to the best of your knowledge. ` +
         `If insufficient, say you don't have enough information.\n\nContext:\n${context}`;
 
       const messages = [
