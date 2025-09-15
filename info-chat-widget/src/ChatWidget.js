@@ -21,7 +21,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
   const [ingestUrl, setIngestUrl] = useState('');
   const [ingestStatus, setIngestStatus] = useState(null);
   const [retryStatus, setRetryStatus] = useState(null);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showConfirmReingest, setShowConfirmReingest] = useState(false);
   const lastMessageRef = useRef(null);
@@ -155,7 +155,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
             <div className="minimized-icon">🤖</div>
             {messages.length > 0 && <div className="message-indicator">{messages.length}</div>}
           </div>
-          <div className="tooltip">Click to expand chat</div>
+          <div className="tooltip">Click to open chat</div>
         </div>
       )}
 
