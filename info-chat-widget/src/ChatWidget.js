@@ -144,6 +144,22 @@ const ChatWidget = ({ baseUrl, appName }) => {
     setTimeout(() => setRetryStatus(null), 2000);
   };
 
+  const handleNewChat = () => {
+    // Clear messages
+    setMessages([]);
+    // Clear input
+    setInput('');
+    // Clear localStorage for this chat
+    try {
+      const key = `gic:history:${appName}:${baseUrl || ''}`;
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(key);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  };
+
   const hasMessages = messages.length > 0 || isLoading;
 
   return (
@@ -164,6 +180,16 @@ const ChatWidget = ({ baseUrl, appName }) => {
         <div className={`chat-conversation ${hasMessages ? 'visible' : ''}`}>
           <div className="chat-header">
             <div className="chat-header-actions">
+              <div className="tooltip-container">
+                <button
+                  className="header-button"
+                  onClick={handleNewChat}
+                  disabled={isLoading}
+                >
+                  🆕
+                </button>
+                <div className="tooltip">Start new chat</div>
+              </div>
               <div className="tooltip-container">
                 <button
                   className="header-button"

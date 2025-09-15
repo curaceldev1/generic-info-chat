@@ -348,7 +348,7 @@ body {
 }
 
 /* Hide reingest button */
-.chat-header-actions .tooltip-container:nth-child(3) {
+.chat-header-actions .tooltip-container:nth-child(4) {
   display: none;
 }
 
@@ -853,7 +853,7 @@ body {
 }
 
 /* Hide reingest button */
-.chat-header-actions .tooltip-container:nth-child(3) {
+.chat-header-actions .tooltip-container:nth-child(4) {
   display: none;
 }
 
