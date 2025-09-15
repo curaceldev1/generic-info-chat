@@ -186,7 +186,7 @@ const ChatWidget = ({ baseUrl, appName }) => {
                   onClick={handleNewChat}
                   disabled={isLoading}
                 >
-                  🆕
+                  +
                 </button>
                 <div className="tooltip">Start new chat</div>
               </div>
